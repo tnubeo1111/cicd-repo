@@ -1,0 +1,18 @@
+pipeline{
+    agent{
+        docker {image 'node:17-alpine'}
+    }
+    stages{
+        stage('Test Stage'){
+            steps{
+                sh 'echo "Testing the pipeline"'
+                sh 'node --version'
+            }
+        }
+        stage('Upgrade Node Version'){
+            steps{
+                sh 'node --version'
+            }
+        }
+    }
+}
