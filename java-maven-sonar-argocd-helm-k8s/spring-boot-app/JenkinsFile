@@ -6,11 +6,6 @@ pipeline {
     }
   }
   stages {
-    stage('Cleanup') {
-      steps {
-        cleanWs()
-        }
-    }
     stage('Checkout') {
       steps {
         sh 'echo passed'
