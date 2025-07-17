@@ -53,6 +53,15 @@ pipeline {
     stage('Test Docker Image') {
       steps {
         script {
+          // Kiểm tra container nào đang chiếm port 8010 và dừng nó nếu có
+          sh '''
+            PORT_IN_USE=$(docker ps --format '{{.ID}} {{.Ports}}' | grep '0.0.0.0:8010->' | awk '{print $1}')
+            if [ -n "$PORT_IN_USE" ]; then
+              echo "Stopping container using port 8010: $PORT_IN_USE"
+              docker stop $PORT_IN_USE
+            fi
+          '''
+           // Khởi chạy container mới
           sh 'docker run --rm -d -p 8010:8080 thanhtha/ultimate-cicd:${BUILD_NUMBER}'
           sh 'sleep 10' // wait for the application to start
         
