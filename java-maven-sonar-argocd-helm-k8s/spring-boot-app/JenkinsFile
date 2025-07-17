@@ -50,6 +50,31 @@ pipeline {
         }
       }
     }
+    stage('Test Docker Image') {
+      steps {
+        script {
+          sh 'docker run --rm -d -p 8010:8080 thanhtha/ultimate-cicd:${BUILD_NUMBER}'
+          sh 'sleep 10' // wait for the application to start
+        }
+      }
+      steps {
+        def status = sh(
+          script: "curl -s -o /dev/null -w '%{http_code}' http://localhost:8010/",
+          returnStdout: true
+        ).trim()
+
+        echo "HTTP Status Code: ${status}"
+
+        if (status == "200") {
+          echo "Application test passed with status 200"
+        } else {
+          error("Application test failed with status ${status}")
+        }
+
+      // Cleanup
+        sh 'docker stop test_container'
+      }
+    }
     // stage('Update Deployment File') {
     //     environment {
     //         GIT_REPO_NAME = "Jenkins-Zero-To-Hero"
