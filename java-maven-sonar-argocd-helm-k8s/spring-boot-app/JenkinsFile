@@ -55,7 +55,7 @@ pipeline {
         script {
           sh 'docker run --rm -d -p 8010:8080 thanhtha/ultimate-cicd:${BUILD_NUMBER}'
           sh 'sleep 10' // wait for the application to start
-        }
+        
         def status = sh(
           script: "curl -s -o /dev/null -w '%{http_code}' http://localhost:8010/",
           returnStdout: true
@@ -71,6 +71,7 @@ pipeline {
 
       // Cleanup
         sh 'docker stop test_container || true'
+        }
       }
     }
     // stage('Update Deployment File') {
