@@ -1,7 +1,7 @@
 pipeline {
   agent {
     docker {
-      image 'thanhtha/docker-agent:java-v17-mvn'
+      image 'thanhtha/jenkins-agent:java-v17-mvn'
       args '--user root -v /var/run/docker.sock:/var/run/docker.sock' // mount Docker socket to access the host's Docker daemon
     }
   }
