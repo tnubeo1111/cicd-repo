@@ -62,22 +62,30 @@ pipeline {
             fi
           '''
            // Khởi chạy container mới
-          sh 'docker run --rm -d -p 8010:8080 thanhtha/ultimate-cicd:${BUILD_NUMBER}'
-          sh 'sleep 10' // wait for the application to start
-        
-        def status = sh(script: "curl -s -o /dev/null -w '%{http_code}' http://localhost:8010/", returnStdout: true).trim()
-          
+          // Chạy container
+            sh 'docker run --rm -d -p 8010:8080 --name test_container thanhtha/ultimate-cicd:${BUILD_NUMBER}'
 
-        echo "HTTP Status Code: ${status}"
+            // In logs nếu cần debug
+            sh 'docker ps -a'
+            sh 'docker logs test_container || true'
 
-        if (status == "200") {
-          echo "Application test passed with status 200"
-        } else {
-          error("Application test failed with status ${status}")
-        }
+            // Chờ app sẵn sàng
+            sh '''
+              for i in {1..20}; do
+                STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8010/)
+                echo "Try $i - HTTP Status: $STATUS"
+                if [ "$STATUS" = "200" ]; then
+                  echo "App responded with 200 OK"
+                  exit 0
+                fi
+                sleep 2
+              done
+              echo "App did not become ready in time."
+              exit 1
+            '''
 
-      // Cleanup
-        sh 'docker stop test_container || true'
+            // Cleanup container
+            sh 'docker stop test_container || true'
         }
       }
     }
