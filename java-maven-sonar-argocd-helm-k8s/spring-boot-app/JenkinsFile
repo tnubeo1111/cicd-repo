@@ -22,7 +22,9 @@ pipeline {
       steps {
         sh 'ls -ltr'
         // build the project and create a JAR file
-        sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && mvn clean package && chown -R $(whoami):$(whoami) target/'
+        sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && mvn clean package'
+        // Change owner Jenkins
+        sh 'chown -R jenkins:jenkins java-maven-sonar-argocd-helm-k8s/spring-boot-app/target/'
       }
     }
     stage('Static Code Analysis') {
