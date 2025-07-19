@@ -2,14 +2,14 @@ pipeline {
   agent {
     docker {
       image 'thanhtha/jenkins-agent:java-v17-mvn'
-      args '-v /var/run/docker.sock:/var/run/docker.sock' // mount Docker socket to access the host's Docker daemon
+      args '--user root -v /var/run/docker.sock:/var/run/docker.sock' // mount Docker socket to access the host's Docker daemon
     }
   }
   stages {
-    stage('Check Java Version') {
+    stage('Check Information') {
       steps {
         sh 'java -version'
-        sh 'whoami'
+        sh 'cat cat /etc/passwd | grep "jenkins"'
       }
     }
     stage('Checkout') {
