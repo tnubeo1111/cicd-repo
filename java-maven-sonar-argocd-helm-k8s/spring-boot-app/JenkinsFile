@@ -9,7 +9,7 @@ pipeline {
     stage('Check Information') {
       steps {
         sh 'java -version'
-        sh 'cat cat /etc/passwd | grep "jenkins"'
+        sh 'su jenkins'
       }
     }
     stage('Checkout') {
