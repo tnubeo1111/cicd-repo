@@ -44,26 +44,37 @@ pipeline {
         }
       }
     }
-    // stage('Test Docker Image') {
-    //   steps {
-    //     script {
-    //       // Kiểm tra container nào đang chiếm port 8010 và dừng nó nếu có
-    //         sh '''
-    //           PORT_IN_USE=$(docker ps --format '{{.ID}} {{.Ports}}' | grep '0.0.0.0:8010->' | awk '{print $1}')
-    //           if [ -n "$PORT_IN_USE" ]; then
-    //             echo "Stopping container using port 8010: $PORT_IN_USE"
-    //             docker stop $PORT_IN_USE
-    //           fi
-    //         '''
-    //        // Khởi chạy container mới
-    //         sh '''
-    //             docker run --rm -d -p 8010:8080 --name test_container thanhtha/ultimate-cicd:${BUILD_NUMBER}
-    //             docker ps -a | grep test_container || true
-    //             docker stop test_container || true
-    //         '''
-    //     }
-    //   }
-    // }
+    stage('Test Docker Image') {
+      steps {
+        script {
+          // Kiểm tra container nào đang chiếm port 8010 và dừng nó nếu có
+            sh '''
+              PORT_IN_USE=$(docker ps --format '{{.ID}} {{.Ports}}' | grep '0.0.0.0:8010->' | awk '{print $1}')
+              if [ -n "$PORT_IN_USE" ]; then
+                echo "Stopping container using port 8010: $PORT_IN_USE"
+                docker stop $PORT_IN_USE
+              fi
+            '''
+           // Khởi chạy container mới
+            sh '''
+                docker run --rm -d -p 8010:8080 --name test_container thanhtha/ultimate-cicd:${BUILD_NUMBER}
+                docker ps -a | grep test_container || true
+                docker stop test_container || true
+            '''
+        }
+      }
+    }
+    stage('Delete old file deployment') {
+      steps {
+        script {
+          sh '''
+            if [ -f java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/tmp-deployment.yml ]; then
+              rm java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/tmp-deployment.yml
+            fi
+          '''
+        }
+      }
+    }
     stage('Update Deployment File') {
         environment {
             GIT_REPO_NAME = "cicd-repo"
@@ -73,13 +84,12 @@ pipeline {
             withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
                 sh '''
                     git config --global --add safe.directory '*'
-                    pwd
-                    ls -al
-                    git config user.email "pelu0377583903@gmail.com"
-                    git config user.name "tnubeo1111"
+                    git config user.email "jenkins-admin@gmail.com"
+                    git config user.name "jenkins-admin"
                     BUILD_NUMBER=${BUILD_NUMBER}
-                    sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
-                    git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+                    cp java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml tmp-deployment.yml
+                    sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/tmp-deployment.yml
+                    git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/*
                     git commit -m "Update deployment image to version ${BUILD_NUMBER}"
                     git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:master
                 '''
