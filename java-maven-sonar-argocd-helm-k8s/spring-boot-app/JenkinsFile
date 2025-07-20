@@ -6,11 +6,11 @@ pipeline {
     }
   }
   stages {
-    stage('Check Information') {
-      steps {
-        sh 'java -version'
-      }
-    }
+    // stage('Check Information') {
+    //   steps {
+    //     sh 'java -version'
+    //   }
+    // }
     stage('Checkout') {
       steps {
         sh 'echo passed'
@@ -50,37 +50,36 @@ pipeline {
         }
       }
     }
-    stage('Test Docker Image') {
-      steps {
-        script {
-          // Kiểm tra container nào đang chiếm port 8010 và dừng nó nếu có
-            sh '''
-              PORT_IN_USE=$(docker ps --format '{{.ID}} {{.Ports}}' | grep '0.0.0.0:8010->' | awk '{print $1}')
-              if [ -n "$PORT_IN_USE" ]; then
-                echo "Stopping container using port 8010: $PORT_IN_USE"
-                docker stop $PORT_IN_USE
-              fi
-            '''
-           // Khởi chạy container mới
-            sh '''
-                docker run --rm -d -p 8010:8080 --name test_container thanhtha/ultimate-cicd:${BUILD_NUMBER}
-                docker ps -a | grep test_container || true
-                docker stop test_container || true
-            '''
-        }
-      }
-    }
+    // stage('Test Docker Image') {
+    //   steps {
+    //     script {
+    //       // Kiểm tra container nào đang chiếm port 8010 và dừng nó nếu có
+    //         sh '''
+    //           PORT_IN_USE=$(docker ps --format '{{.ID}} {{.Ports}}' | grep '0.0.0.0:8010->' | awk '{print $1}')
+    //           if [ -n "$PORT_IN_USE" ]; then
+    //             echo "Stopping container using port 8010: $PORT_IN_USE"
+    //             docker stop $PORT_IN_USE
+    //           fi
+    //         '''
+    //        // Khởi chạy container mới
+    //         sh '''
+    //             docker run --rm -d -p 8010:8080 --name test_container thanhtha/ultimate-cicd:${BUILD_NUMBER}
+    //             docker ps -a | grep test_container || true
+    //             docker stop test_container || true
+    //         '''
+    //     }
+    //   }
+    // }
     stage('Update Deployment File') {
         environment {
             GIT_REPO_NAME = "cicd-repo"
             GIT_USER_NAME = "tnubeo1111"
-            IMAGE_NAME = "thanhtha/ultimate-cicd"
         }
         steps {
             withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
                 sh '''
-                    git config user.email "tha.lt11011@gmail.com"
-                    git config user.name "tnubeo11111"
+                    git config user.email "jenkins@gmail.com"
+                    git config user.name "jenkins"
                     BUILD_NUMBER=${BUILD_NUMBER}
                     sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
                     git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
