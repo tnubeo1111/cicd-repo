@@ -72,7 +72,7 @@ pipeline {
         steps {
             withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
                 sh '''
-                    chown -R  jenkins:jenkins .git
+                    chown -R  116:121 .git
                     ls -al
                     git config user.email "pelu0377583903@gmail.com"
                     git config user.name "tnubeo1111"
