@@ -73,6 +73,7 @@ pipeline {
             withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
                 sh '''
                     git config --global --add safe.directory '*'
+                    pwd
                     ls -al
                     git config user.email "pelu0377583903@gmail.com"
                     git config user.name "tnubeo1111"
