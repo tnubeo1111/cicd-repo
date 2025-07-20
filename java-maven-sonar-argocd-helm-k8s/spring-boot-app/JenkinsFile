@@ -77,14 +77,6 @@ pipeline {
             IMAGE_NAME = "thanhtha/ultimate-cicd"
         }
         steps {
-          script {
-            sh '''
-              pwd
-              ls -al
-            '''
-          }
-        }
-        steps {
             withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
                 sh '''
                     cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
