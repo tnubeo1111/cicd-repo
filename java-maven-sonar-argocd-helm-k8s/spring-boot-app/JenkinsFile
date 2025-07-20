@@ -80,7 +80,7 @@ pipeline {
                 sh '''
                     pwd && ls -al
                     cp -R .git git
-                    ls -al
+                    ls -al git
                     git config user.email "pelu0377583903@gmail.com"
                     git config user.name "tnubeo1111"
                     BUILD_NUMBER=${BUILD_NUMBER}
