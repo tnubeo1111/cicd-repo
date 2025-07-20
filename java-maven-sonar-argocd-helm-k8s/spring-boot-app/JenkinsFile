@@ -3,6 +3,10 @@ pipeline {
     docker {
       image 'thanhtha/jenkins-agent:java-v17-mvn'
       args '--user root -v /var/run/docker.sock:/var/run/docker.sock' // mount Docker socket to access the host's Docker daemon
+      script {
+        sh 'cd /var/jenkins_home'
+        sh 'git config --global --add safe.directory '*''
+      }
     }
   }
   stages {
