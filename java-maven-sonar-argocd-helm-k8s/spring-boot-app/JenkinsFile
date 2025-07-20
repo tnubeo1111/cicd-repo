@@ -77,19 +77,27 @@ pipeline {
             IMAGE_NAME = "thanhtha/ultimate-cicd"
         }
         steps {
-            withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
-                sh '''
-                    git config user.email "tha.lt11011@gmail.com"
-                    git config user.name "tnubeo11111"
-                    BUILD_NUMBER=${BUILD_NUMBER}
-                    sed -i "s/replaceImageName/${IMAGE_NAME}/g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
-                    sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
-                    git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
-                    git commit -m "Update deployment image to version ${BUILD_NUMBER}"
-                    git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:master
-                '''
-            }
+          script {
+            sh '''
+              pwd
+              ls -ltr
+            '''
+          }
         }
+        // steps {
+        //     withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
+        //         sh '''
+        //             git config user.email "tha.lt11011@gmail.com"
+        //             git config user.name "tnubeo11111"
+        //             BUILD_NUMBER=${BUILD_NUMBER}
+        //             sed -i "s/replaceImageName/${IMAGE_NAME}/g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+        //             sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+        //             git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+        //             git commit -m "Update deployment image to version ${BUILD_NUMBER}"
+        //             git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:master
+        //         '''
+        //     }
+        // }
     }
   }
   post {
