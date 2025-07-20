@@ -79,9 +79,8 @@ pipeline {
         steps {
           script {
             sh '''
-              cd java-maven-sonar-argocd-helm-k8s
               pwd
-              ls -ltr
+              ls -al
             '''
           }
         }
