@@ -75,8 +75,8 @@ pipeline {
                     git config --global --add safe.directory '*'
                     pwd
                     ls -al
-                    git config user.email "pelu0377583903@gmail.com"
-                    git config user.name "tnubeo1111"
+                    git config user.email "jenkins-admin@gmail.com"
+                    git config user.name "jenkins-admin"
                     BUILD_NUMBER=${BUILD_NUMBER}
                     sed -i "s/${BUILD_NUMBER}/${BUILD_NUMBER}/g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
                     git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
