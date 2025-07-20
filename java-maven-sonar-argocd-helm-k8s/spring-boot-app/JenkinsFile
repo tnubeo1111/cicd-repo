@@ -67,9 +67,10 @@ pipeline {
     stage('Delete old file deployment') {
       steps {
         script {
+          // Xóa file tạm thời nếu tồn tại
           sh '''
             if [ -f java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/tmp-deployment.yml ]; then
-              rm java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/tmp-deployment.yml
+              rm -f java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/tmp-deployment.yml
             fi
           '''
         }
@@ -87,7 +88,7 @@ pipeline {
                     git config user.email "jenkins-admin@gmail.com"
                     git config user.name "jenkins-admin"
                     BUILD_NUMBER=${BUILD_NUMBER}
-                    cp java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml tmp-deployment.yml
+                    cp java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/tmp-deployment.yml
                     sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/tmp-deployment.yml
                     git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/*
                     git commit -m "Update deployment image to version ${BUILD_NUMBER}"
