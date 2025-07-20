@@ -1,25 +1,13 @@
 pipeline {
   agent {
     docker {
-      image 'thanhtha/jenkins-agent:java-v17-mvn'
+      image 'thanhtha/jenkins-agent:java-v17-mvn-1'
       args '--user root -v /var/run/docker.sock:/var/run/docker.sock' // mount Docker socket to access the host's Docker daemon
     }
   }
   stages {
-    // stage('Check Information') {
-    //   steps {
-    //     sh 'java -version'
-    //   }
-    // }
-    stage ('Git config') {
-      steps {
-        sh 'cd /var/jenkins_home'
-        sh 'git config --global --add safe.directory '*''
-      }
-    }
     stage('Checkout') {
       steps {
-        sh 'echo passed'
         git branch: 'master', url: 'https://github.com/tnubeo1111/cicd-repo.git'
       }
     }
