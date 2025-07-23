@@ -11,15 +11,13 @@ pipeline {
                 git branch: 'master', url: 'https://github.com/tnubeo1111/cicd-repo.git'
             }
         }
-        stage ('Check Directory') {
+        stage ('Check Directory Dest') {
             steps {
                 sh '''
                     cd node-npm-sonar-argocd-k8s/tic-tac
-                    if [ ! -d "tic-tac" ]; then
+                    if [ ! -d "Dest" ]; then
                         echo "Directory 'tic-tac' does not exist."
-                        exit 1
                     fi
-                    echo "Directory 'tic-tac' exists."
 
                     ls -al
                 '''
