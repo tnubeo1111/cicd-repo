@@ -26,7 +26,7 @@ pipeline {
         stage('Create SonarQube Project') {
             environment {
                 SONAR_URL = "http://172.25.216.100:9000"
-                SONAR_PROJECT_KEY = "tic-tac-toe-${BUILD_ID}"  // Tạo khóa dự án duy nhất dựa trên BUILD_ID
+                SONAR_PROJECT_KEY = "tic-tac-toe"  // Tạo khóa dự án duy nhất dựa trên BUILD_ID
                 SONAR_PROJECT_NAME = "Tic-Tac-Toe Project"
             }
             steps {
