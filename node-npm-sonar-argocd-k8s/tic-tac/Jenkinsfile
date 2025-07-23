@@ -7,7 +7,7 @@ pipeline {
     }
     environment {
     SONAR_PROJECT_KEY = "tic-tac-toe"
-    SONAR_PROJECT_NAME = "Tic-Tac-Toe Project"
+    SONAR_PROJECT_NAME = "Tic-Tac-Toe-Project"
     SONAR_URL = "http://172.25.216.100:9000"
     }
     stages {
