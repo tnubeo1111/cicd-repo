@@ -16,13 +16,34 @@ pipeline {
                 sh '''
                     cd node-npm-sonar-argocd-k8s/tic-tac
                     if [ ! -d "Dest" ]; then
-                        echo "Directory 'tic-tac' does not exist."
+                        echo "Directory Dest' does not exist."
                     fi
 
                     ls -al
                 '''
             }
         }
+        stage('Static Code Analysis') {
+            environment {
+                SONAR_URL = "http://172.25.216.100:9000"
+            }
+            steps {
+                withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
+                sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && mvn sonar:sonar -Dsonar.login=$SONAR_AUTH_TOKEN -Dsonar.host.url=${SONAR_URL}'
+                }
+            }
+            }
+        // stage ('Build images') {
+        //     environment {
+        //         DOCKER_IMAGE = ""thanhtha/tic-tac-toe:${BUILD_NUMBER}""
+        //     }
+        //     steps {
+        //         sh '''
+        //             cd node-npm-sonar-argocd-k8s/tic-tac
+        //             docker build -t  .
+        //         '''
+        //     }
+        // }
     }
     post {
       always {
