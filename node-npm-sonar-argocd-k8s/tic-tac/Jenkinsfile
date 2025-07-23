@@ -77,8 +77,8 @@ pipeline {
                 script {
                 // Xóa file tạm thời nếu tồn tại
                 sh '''
-                    if [ -f cd node-npm-sonar-argocd-k8s/tic-tac-manifest/deployment.yaml ]; then
-                    rm -f cd node-npm-sonar-argocd-k8s/tic-tac-manifest/deployment.yaml
+                    if [ -f cd node-npm-sonar-argocd-k8s/tic-tac-manifest/tmp-deployment.yaml ]; then
+                    rm -f node-npm-sonar-argocd-k8s/tic-tac-manifest/tmp-deployment.yaml
                     fi
                 '''
                 }
@@ -96,8 +96,8 @@ pipeline {
                         git config user.email "jenkins-admin@gmail.com"
                         git config user.name "jenkins-admin"
                         BUILD_NUMBER=${BUILD_NUMBER}
-                        cp node-npm-sonar-argocd-k8s/tic-tac-manifest/tmp-deployment.yaml node-npm-sonar-argocd-k8s/tic-tac-manifest/deployment.yaml
-                        sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" node-npm-sonar-argocd-k8s/tic-tac-manifest/deployment.yaml
+                        cp node-npm-sonar-argocd-k8s/tic-tac-manifest/deployment.yaml node-npm-sonar-argocd-k8s/tic-tac-manifest/tmp-deployment.yaml
+                        sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" node-npm-sonar-argocd-k8s/tic-tac-manifest/tmp-deployment.yaml
                         git add node-npm-sonar-argocd-k8s/tic-tac-manifest/*
                         git commit -m "Update deployment image to version ${BUILD_NUMBER}"
                         git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:master
