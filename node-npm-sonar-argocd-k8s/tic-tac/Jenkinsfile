@@ -1,9 +1,14 @@
 pipeline {
     agent {
         docker {
-            image 'thanhtha/jenkins-agent:java-v17-mvn-npm-1'
+            image 'thanhtha/jenkins-agent:java-v17-mvn-npm-2'
             args '--user root -v /var/run/docker.sock:/var/run/docker.sock' // mount Docker socket to access the host's Docker daemon
         }
+    }
+    environment {
+    SONAR_PROJECT_KEY = "tic-tac-toe"
+    SONAR_PROJECT_NAME = "Tic-Tac-Toe Project"
+    SONAR_URL = "http://172.25.216.100:9000"
     }
     stages {
         stage ('Checkout') {
@@ -24,11 +29,6 @@ pipeline {
             }
         }
         stage('Create SonarQube Project') {
-            environment {
-                SONAR_URL = "http://172.25.216.100:9000"
-                SONAR_PROJECT_KEY = "tic-tac-toe"  // Tạo khóa dự án duy nhất dựa trên BUILD_ID
-                SONAR_PROJECT_NAME = "Tic-Tac-Toe Project"
-            }
             steps {
                 withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
                     // Tạo dự án mới trên SonarQube thông qua API
@@ -43,9 +43,6 @@ pipeline {
             }
         }
         stage('Static Code Analysis') {
-            environment {
-                SONAR_URL = "http://172.25.216.100:9000"
-            }
             steps {
                 withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
                     sh '''
