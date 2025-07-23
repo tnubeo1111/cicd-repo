@@ -33,7 +33,11 @@ pipeline {
                 withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
                     // Tạo dự án mới trên SonarQube thông qua API
                     sh """
-                        curl -u ${SONAR_AUTH_TOKEN}: -X POST "${SONAR_URL}/api/projects/create?name=${SONAR_PROJECT_NAME}&project=${SONAR_PROJECT_KEY}"
+                        curl -u ${SONAR_AUTH_TOKEN}: \
+                        -X POST \
+                        -d "name=${SONAR_PROJECT_NAME}" \
+                        -d "project=${SONAR_PROJECT_KEY}" \
+                        ${SONAR_URL}/api/projects/create
                     """
                 }
             }
@@ -45,7 +49,7 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
                     sh '''
-                        cd node-npm-sonar-argocd-k8s/tic-tac &&
+                        cd node-npm-sonar-argocd-k8s/tic-tac
                         sonar-scanner \
                             -Dsonar.login=$SONAR_AUTH_TOKEN \
                             -Dsonar.host.url=${SONAR_URL} \
