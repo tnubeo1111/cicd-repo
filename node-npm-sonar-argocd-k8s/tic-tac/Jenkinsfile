@@ -72,6 +72,39 @@ pipeline {
                 }
             }
         }
+        stage('Delete old file deployment') {
+            steps {
+                script {
+                // Xóa file tạm thời nếu tồn tại
+                sh '''
+                    if [ -f cd node-npm-sonar-argocd-k8s/tic-tac-manifest/deployment.yml ]; then
+                    rm -f cd node-npm-sonar-argocd-k8s/tic-tac-manifest/deployment.yml
+                    fi
+                '''
+                }
+            }
+            }
+        stage('Update Deployment File') {
+            environment {
+                GIT_REPO_NAME = "cicd-repo"
+                GIT_USER_NAME = "tnubeo1111"
+            }
+            steps {
+                withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
+                    sh '''
+                        git config --global --add safe.directory '*'
+                        git config user.email "jenkins-admin@gmail.com"
+                        git config user.name "jenkins-admin"
+                        BUILD_NUMBER=${BUILD_NUMBER}
+                        cp node-npm-sonar-argocd-k8s/tic-tac-manifest/tmp-deployment.yml node-npm-sonar-argocd-k8s/tic-tac-manifest/deployment.yml
+                        sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" node-npm-sonar-argocd-k8s/tic-tac-manifest/deployment.yml
+                        git add node-npm-sonar-argocd-k8s/tic-tac-manifest/*
+                        git commit -m "Update deployment image to version ${BUILD_NUMBER}"
+                        git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:master
+                    '''
+                }
+            }
+        }
     }
     post {
       always {
