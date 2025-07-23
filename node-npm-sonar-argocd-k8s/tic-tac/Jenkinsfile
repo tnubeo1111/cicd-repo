@@ -1,0 +1,15 @@
+pipeline {
+    agent {
+        docker {
+            image 'thanhtha/jenkins-agent:java-v17-mvn-npm-1'
+            args '--user root -v /var/run/docker.sock:/var/run/docker.sock' // mount Docker socket to access the host's Docker daemon
+        }
+    }
+    stages {
+        stage ('Checkout') {
+            steps {
+                git branch: 'master', url: 'https://github.com/tnubeo1111/cicd-repo.git'
+            }
+        }
+    }
+}
