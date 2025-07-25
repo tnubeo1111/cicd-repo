@@ -5,7 +5,7 @@ metadata:
   labels:
     app: to-do-list
 spec:
-  replicas: 3
+  replicas: 2
   selector:
     matchLabels:
       app: to-do-list
@@ -30,13 +30,13 @@ spec:
             memory: "256Mi"
         livenessProbe:
           httpGet:
-            path: /
+            path: /healthz
             port: 8000
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
           httpGet:
-            path: /
+            path: /healthz
             port: 8000
           initialDelaySeconds: 5
           periodSeconds: 5
