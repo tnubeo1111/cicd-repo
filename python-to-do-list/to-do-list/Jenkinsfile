@@ -21,15 +21,13 @@ pipeline {
         stage ('Check File Dockerfile') {
             steps {
                 sh '''
-                  cd ${DIRECTORY}
+                    cd ${DIRECTORY}
                     if [ ! -f "Dockerfile" ]; then
                         echo "File 'Dockerfile' does not exist."
                         exit 1
                     fi
-                    else
-                        echo "File 'Dockerfile' exists."
-                        ls -al
-                    fi
+                    ls -al
+                    
                 '''
             }
         }
