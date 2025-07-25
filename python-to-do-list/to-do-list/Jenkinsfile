@@ -1,0 +1,21 @@
+pipeline {
+    agent {
+        docker {
+            image 'thanhtha/jenkins-agent:java-v17-mvn-npm-2'
+            args '--user root -v /var/run/docker.sock:/var/run/docker.sock' // mount Docker socket to access the host's Docker daemon
+        }
+    }
+    environment {
+    SONAR_PROJECT_KEY = "to-do-list"
+    SONAR_PROJECT_NAME = "to-do-list-Project"
+    SONAR_URL = "http://172.25.216.100:9000"
+    DOCKER_IMAGE = "thanhtha/to-do-list:${BUILD_NUMBER}"
+    }
+    stages {
+        stage ('Checkout') {
+            steps {
+                git branch: 'master', url: 'https://github.com/tnubeo1111/cicd-repo.git'
+            }
+        }
+    }
+}
