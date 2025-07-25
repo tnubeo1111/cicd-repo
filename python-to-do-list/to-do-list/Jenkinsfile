@@ -11,6 +11,7 @@ pipeline {
     SONAR_URL = "http://172.25.216.100:9000"
     DOCKER_IMAGE = "thanhtha/to-do-list:${BUILD_NUMBER}"
     DIRECTORY = "python-to-do-list/to-do-list"
+    DIRECTORY_MANIFEST = "python-to-do-list/to-do-list-manifest"
     }
     stages {
         stage ('Checkout') {
@@ -56,6 +57,53 @@ pipeline {
                             -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
                             -Dsonar.projectName=${SONAR_PROJECT_NAME} \
                             -Dsonar.sources=.
+                    '''
+                }
+            }
+        }
+        stage ('Build images') {
+            environment {
+                REGISTRY_CREDENTIALS = credentials('docker-thanhtha')
+            }
+            steps {
+                script {
+                    sh 'cd ${DIRECTORY} && docker build -t ${DOCKER_IMAGE} .'
+                    def dockerImage = docker.image("${DOCKER_IMAGE}")
+                    docker.withRegistry('https://index.docker.io/v1/', "docker-thanhtha") {
+                        dockerImage.push()
+                    }
+                }
+            }
+        }
+        stage('Delete old file deployment') {
+            steps {
+                script {
+                // Xóa file tạm thời nếu tồn tại
+                sh '''
+                    if [ -f cd ${DIRECTORY_MANIFEST}/tmp-deployment.yaml ]; then
+                    rm -f ${DIRECTORY_MANIFEST}/tmp-deployment.yaml
+                    fi
+                '''
+                }
+            }
+            }
+        stage('Update Deployment File') {
+            environment {
+                GIT_REPO_NAME = "cicd-repo"
+                GIT_USER_NAME = "tnubeo1111"
+            }
+            steps {
+                withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
+                    sh '''
+                        git config --global --add safe.directory '*'
+                        git config user.email "jenkins-admin@gmail.com"
+                        git config user.name "jenkins-admin"
+                        BUILD_NUMBER=${BUILD_NUMBER}
+                        cp ${DIRECTORY_MANIFEST}/deployment.yaml ${DIRECTORY_MANIFEST}/tmp-deployment.yaml
+                        sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" ${DIRECTORY_MANIFEST}/tmp-deployment.yaml
+                        git add ${DIRECTORY_MANIFEST}/*
+                        git commit -m "Update deployment image to version ${BUILD_NUMBER}"
+                        git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:master
                     '''
                 }
             }
