@@ -10,6 +10,7 @@ pipeline {
     SONAR_PROJECT_NAME = "to-do-list-Project"
     SONAR_URL = "http://172.25.216.100:9000"
     DOCKER_IMAGE = "thanhtha/to-do-list:${BUILD_NUMBER}"
+    DIRECTORY = "python-to-do-list/to-do-list"
     }
     stages {
         stage ('Checkout') {
@@ -19,7 +20,17 @@ pipeline {
         }
         stage ('Check directory') {
             steps {
-                sh 'pwd && ls -la'
+                sh '''
+                  cd ${DIRECTORY}
+                    if [ ! -d "to-do-list" ]; then
+                        echo "Directory 'to-do-list' does not exist."
+                        exit 1
+                    fi
+                    else
+                        echo "Directory 'to-do-list' exists."
+                        ls -al
+                    fi
+                '''
             }
         }
     }
