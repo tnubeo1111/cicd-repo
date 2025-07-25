@@ -17,5 +17,10 @@ pipeline {
                 git branch: 'master', url: 'https://github.com/tnubeo1111/cicd-repo.git'
             }
         }
+        stage ('Check directory') {
+            steps {
+                sh 'pwd && ls -la'
+            }
+        }
     }
 }
