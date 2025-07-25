@@ -18,16 +18,16 @@ pipeline {
                 git branch: 'master', url: 'https://github.com/tnubeo1111/cicd-repo.git'
             }
         }
-        stage ('Check directory') {
+        stage ('Check File Dockerfile') {
             steps {
                 sh '''
                   cd ${DIRECTORY}
-                    if [ ! -d "to-do-list" ]; then
-                        echo "Directory 'to-do-list' does not exist."
+                    if [ ! -f "Dockerfile" ]; then
+                        echo "File 'Dockerfile' does not exist."
                         exit 1
                     fi
                     else
-                        echo "Directory 'to-do-list' exists."
+                        echo "File 'Dockerfile' exists."
                         ls -al
                     fi
                 '''
