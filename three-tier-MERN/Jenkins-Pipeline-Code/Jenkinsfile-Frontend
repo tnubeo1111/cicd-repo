@@ -9,7 +9,7 @@ pipeline {
         SONAR_PROJECT_KEY = "mern-frontend"
         SONAR_PROJECT_NAME = "Mern-frontend-Project"
         SONAR_URL = "http://172.25.216.100:9000"
-        DOCKER_HUB = "docker.io"
+        DOCKER_HUB = "index.docker.io"
         DOCKER_IMAGE = "thanhtha/mern-frontend:${BUILD_NUMBER}"
         DIRECTORY_APP = "three-tier-MERN/Application-Code"
     }
@@ -55,7 +55,6 @@ pipeline {
                 dir("${env.DIRECTORY_APP}/frontend") {
                     sh '''
                         trivy fs . > trivyfs.txt
-                        cat trivyfs.txt
                     '''
                 }
             }
