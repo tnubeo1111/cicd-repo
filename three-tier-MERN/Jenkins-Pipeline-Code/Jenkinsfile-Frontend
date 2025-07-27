@@ -52,7 +52,10 @@ pipeline {
         stage('Trivy File Scan') {
             steps {
                 dir("${env.DIRECTORY_APP}/frontend") {
-                    sh 'trivy fs . > trivyfs.txt'
+                    sh '''
+                        npm install
+                        trivy fs . > trivyfs.txt
+                    '''
                 }
             }
         }
