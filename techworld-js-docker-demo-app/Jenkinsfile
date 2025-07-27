@@ -5,11 +5,18 @@ pipeline{
             args '-u root:root -v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
+    parameters {
+        
+    }
     stages{
-        stage("Checkout"){
-            steps{
-                echo "========checking out code========"
-                checkout scm
+        stage('Checkout') {
+            steps {
+                echo "========checking out dev branch code========"
+                // CHỈ LẤY MÃ TỪ BRANCH dev
+                checkout([$class: 'GitSCM',
+                    branches: [[name: "*/dev"]],
+                    userRemoteConfigs: [[url: 'https://github.com/tnubeo1111/cicd-repo.git']]
+                ])
             }
         }
         stage("B"){
