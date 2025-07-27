@@ -6,9 +6,14 @@ pipeline{
         }
     }
     stages{
-        stage("A"){
-            steps{
-                echo "========executing A========"
+        stage('Checkout') {
+            steps {
+                echo "========checking out dev branch code========"
+                // CHỈ LẤY MÃ TỪ BRANCH dev
+                checkout([$class: 'GitSCM',
+                    branches: [[name: "*/dev"]],
+                    userRemoteConfigs: [[url: 'https://github.com/tnubeo1111/cicd-repo.git']]
+                ])
             }
         }
         stage("B"){
