@@ -5,9 +5,6 @@ pipeline{
             args '-u root:root -v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
-    parameters {
-        
-    }
     stages{
         stage('Checkout') {
             steps {
