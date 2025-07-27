@@ -6,9 +6,10 @@ pipeline{
         }
     }
     stages{
-        stage("A"){
+        stage("Checkout"){
             steps{
-                echo "========executing A========"
+                echo "========checking out code========"
+                checkout scm
             }
         }
         stage("B"){
