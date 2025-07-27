@@ -1,0 +1,58 @@
+pipeline {
+    agent {
+        docker {
+            image 'thanhtha/jenkins-agent:full-tools-jdk17'
+            args '-u root:root -v /var/run/docker.sock:/var/run/docker.sock'
+        }
+    }
+    environment {
+        SONAR_PROJECT_KEY = "mern"
+        SONAR_PROJECT_NAME = "Mern-Project"
+        SONAR_URL = "http://172.25.216.100:9000"
+        DOCKER_IMAGE = "thanhtha/mern:${BUILD_NUMBER}"
+        DIRECTORY_APP = "three-tier-MERN/Application-Code"
+    }
+    stages {
+        stage ('Cleaning Workspace') {
+            steps {
+                cleanWs()
+            }
+        }
+        stage ('Checkout Code')
+        {
+            steps {
+                git branch: 'dev', url: 'https://github.com/tnubeo1111/cicd-repo.git'
+            }
+        }
+        stage ('Create SonarQube Project') {
+            steps {
+                withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
+                    // Tạo dự án mới trên SonarQube thông qua API
+                    sh """
+                        curl -u ${SONAR_AUTH_TOKEN}: \
+                        -X POST \
+                        -d "name=${SONAR_PROJECT_NAME}" \
+                        -d "project=${SONAR_PROJECT_KEY}" \
+                        ${SONAR_URL}/api/projects/create
+                    """
+                }
+            }
+        }
+        stage('Static Code Analysis') {
+            steps {
+                dir($DIRECTORY_APP) {
+                    withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
+                        sh '''
+                            sonar-scanner \
+                                -Dsonar.login=$SONAR_AUTH_TOKEN \
+                                -Dsonar.host.url=${SONAR_URL} \
+                                -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                                -Dsonar.projectName=${SONAR_PROJECT_NAME} \
+                                -Dsonar.sources=.
+                        '''
+                    }
+                }    
+            }
+        }
+    }
+}
