@@ -1,0 +1,36 @@
+pipeline{
+    agent{
+        docker {
+            image 'thanhtha/jenkins-agent:java-v17-mvn-npm-2'
+            args '-u root:root -v /var/run/docker.sock:/var/run/docker.sock'
+        }
+    }
+    stages{
+        stage("A"){
+            steps{
+                echo "========executing A========"
+            }
+        }
+        stage("B"){
+            steps{
+                echo "========executing B========"
+            }  
+        }
+        stage("C"){
+            steps{
+                echo "========executing C========"
+            }
+        }
+    }
+    post{
+        always{
+            echo "========always========"
+        }
+        success{
+            echo "========pipeline executed successfully ========"
+        }
+        failure{
+            echo "========pipeline execution failed========"
+        }
+    }
+}
