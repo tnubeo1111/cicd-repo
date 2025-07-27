@@ -53,8 +53,8 @@ pipeline {
             steps {
                 dir("${env.DIRECTORY_APP}/frontend") {
                     sh '''
-                        npm install
                         trivy fs . > trivyfs.txt
+                        cat trivyfs.txt
                     '''
                 }
             }
