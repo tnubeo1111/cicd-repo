@@ -6,18 +6,13 @@ pipeline {
         }
     }
     environment {
-        SONAR_PROJECT_KEY = "mern"
-        SONAR_PROJECT_NAME = "Mern-Project"
+        SONAR_PROJECT_KEY = "mern-frontend"
+        SONAR_PROJECT_NAME = "Mern-frontend-Project"
         SONAR_URL = "http://172.25.216.100:9000"
-        DOCKER_IMAGE = "thanhtha/mern:${BUILD_NUMBER}"
+        DOCKER_IMAGE = "thanhtha/mern-frontend:${BUILD_NUMBER}"
         DIRECTORY_APP = "three-tier-MERN/Application-Code"
     }
     stages {
-        stage ('Cleaning Workspace') {
-            steps {
-                cleanWs()
-            }
-        }
         stage ('Checkout Code')
         {
             steps {
@@ -40,7 +35,7 @@ pipeline {
         }
         stage('Static Code Analysis') {
             steps {
-                dir($DIRECTORY_APP) {
+                dir($DIRECTORY_APP/frontend) {
                     withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
                         sh '''
                             sonar-scanner \
@@ -54,5 +49,10 @@ pipeline {
                 }    
             }
         }
+    }
+    post {
+      always {
+        cleanWs()
+      }
     }
 }
