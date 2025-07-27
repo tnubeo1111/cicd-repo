@@ -1,0 +1,91 @@
+pipeline {
+    agent {
+        docker {
+            image 'thanhtha/jenkins-agent:full-tools-jdk17'
+            args '-u root:root -v /var/run/docker.sock:/var/run/docker.sock'
+        }
+    }
+    environment {
+        SONAR_PROJECT_KEY = "mern-backend"
+        SONAR_PROJECT_NAME = "Mern-backend-Project"
+        SONAR_URL = "http://172.25.216.100:9000"
+        DOCKER_HUB = "index.docker.io"
+        DOCKER_IMAGE = "thanhtha/mern-backend:${BUILD_NUMBER}"
+        DIRECTORY_APP = "three-tier-MERN/Application-Code"
+    }
+    stages {
+        stage ('Checkout Code')
+        {
+            steps {
+                git branch: 'dev', url: 'https://github.com/tnubeo1111/cicd-repo.git'
+            }
+        }
+        stage ('Create SonarQube Project') {
+            steps {
+                withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
+                    // Tạo dự án mới trên SonarQube thông qua API
+                    sh """
+                        curl -u ${SONAR_AUTH_TOKEN}: \
+                        -X POST \
+                        -d "name=${SONAR_PROJECT_NAME}" \
+                        -d "project=${SONAR_PROJECT_KEY}" \
+                        ${SONAR_URL}/api/projects/create
+                    """
+                }
+            }
+        }
+        stage('Static Code Analysis') {
+            steps {
+                dir("${env.DIRECTORY_APP}/backend") {
+                    withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
+                        sh '''
+                            sonar-scanner \
+                                -Dsonar.login=$SONAR_AUTH_TOKEN \
+                                -Dsonar.host.url=${SONAR_URL} \
+                                -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                                -Dsonar.projectName=${SONAR_PROJECT_NAME} \
+                                -Dsonar.sources=.
+                        '''
+                    }
+                }    
+            }
+        }
+        stage('Trivy File Scan') {
+            steps {
+                dir("${env.DIRECTORY_APP}/backend") {
+                    sh '''
+                        trivy fs . > trivyfs.txt
+                    '''
+                }
+            }
+        }
+        stage ('Build images') {
+            environment {
+                REGISTRY_CREDENTIALS = credentials('docker-thanhtha')
+            }
+            steps {
+                script {
+                    sh 'cd node-npm-sonar-argocd-k8s/tic-tac && docker build -t ${DOCKER_IMAGE} .'
+                    def dockerImage = docker.image("${DOCKER_IMAGE}")
+                    docker.withRegistry('https://index.docker.io/v1/', "docker-thanhtha") {
+                        dockerImage.push()
+                    }
+                }
+            }
+        }
+        stage("TRIVY Image Scan") {
+            steps {
+                sh '''
+                    trivy image ${DOCKER_HUB}/${DOCKER_IMAGE} > trivyimage.txt
+                    cat trivyimage.txt
+                ''' 
+            }
+        }
+
+    }
+    post {
+      always {
+        cleanWs()
+      }
+    }
+}
