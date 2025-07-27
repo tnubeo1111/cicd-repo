@@ -35,7 +35,7 @@ pipeline {
         }
         stage('Static Code Analysis') {
             steps {
-                dir($DIRECTORY_APP/frontend) {
+                dir("${env.DIRECTORY_APP}/frontend") {
                     withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
                         sh '''
                             sonar-scanner \
