@@ -47,21 +47,27 @@ pipeline {
         stage('Static Code Analysis') {
             steps {
                 withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
-                    sh '''
-                        cd ${DIRECTORY}
-                        sonar-scanner \
-                            -Dsonar.login=$SONAR_AUTH_TOKEN \
-                            -Dsonar.host.url=${SONAR_URL} \
-                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                            -Dsonar.projectName=${SONAR_PROJECT_NAME} \
-                            -Dsonar.sources=.
-                    '''
+                    // Cần thêm withSonarQubeEnv với tên server đã cấu hình trong Jenkins
+                    withSonarQubeEnv('SonarQubeServerName') {
+                        sh '''
+                            cd ${DIRECTORY}
+                            sonar-scanner \
+                                -Dsonar.login=$SONAR_AUTH_TOKEN \
+                                -Dsonar.host.url=${SONAR_URL} \
+                                -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                                -Dsonar.projectName=${SONAR_PROJECT_NAME} \
+                                -Dsonar.sources=.
+                        '''
+                    }
                 }
             }
         }
         stage('Quality Gate') {
             steps {
-                waitForQualityGate abortPipeline: true
+                // Đặt timeout tránh chờ quá lâu
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
             }
         }
         stage('Build images') {
@@ -70,9 +76,9 @@ pipeline {
             }
             steps {
                 script {
-                    sh 'cd ${DIRECTORY} && docker build --pull -t ${DOCKER_IMAGE} .'
+                    sh "cd ${DIRECTORY} && docker build --pull -t ${DOCKER_IMAGE} ."
                     def dockerImage = docker.image("${DOCKER_IMAGE}")
-                    docker.withRegistry('https://index.docker.io/v1/', "docker-thanhtha") {
+                    docker.withRegistry('https://index.docker.io/v1/', 'docker-thanhtha') {
                         dockerImage.push()
                     }
                 }
@@ -114,8 +120,8 @@ pipeline {
         }
     }
     post {
-      always {
-        cleanWs()
-      }
+        always {
+            cleanWs()
+        }
     }
 }
