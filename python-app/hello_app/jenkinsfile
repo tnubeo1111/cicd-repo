@@ -19,8 +19,8 @@ pipeline {
         // Git config cho việc push manifest
         GIT_REPO_NAME = "cicd-repo"
         GIT_USER_NAME = "tnubeo1111"
-        GIT_USER_EMAIL = "jenkins-admin@gmail.com"
-        GIT_USER_NAME = "jenkins-admin"
+        GIT_USER_EMAIL_CONFIG = "jenkins-admin@gmail.com"
+        GIT_USER_NAME_CONFIG = "jenkins-admin"
     }
     options {
         // Giới hạn thời gian tổng pipeline, tránh treo lâu
@@ -137,8 +137,8 @@ pipeline {
                     script {
                         sh """
                             git config --global --add safe.directory '*'
-                            git config user.email "${GIT_USER_EMAIL}"
-                            git config user.name "${GIT_USER_NAME}"
+                            git config user.email "${GIT_USER_EMAIL_CONFIG}"
+                            git config user.name "${GIT_USER_NAME_CONFIG}"
                             BUILD_NUMBER=${BUILD_NUMBER}
                             
                             cp ${DIRECTORY_MANIFEST}/deployment.yaml ${DIRECTORY_MANIFEST}/tmp-deployment.yaml
