@@ -1,127 +1,176 @@
 pipeline {
     agent {
         docker {
+            // Image agent build chuẩn có sẵn đầy đủ tools, mount docker socket để build/push image
             image 'thanhtha/jenkins-agent:full-tools-jdk17-3'
             args '--user root -v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
     environment {
+        // Biến môi trường project
         SONAR_PROJECT_KEY = "python-app"
         SONAR_PROJECT_NAME = "python-app-Project"
         SONAR_URL = "http://172.25.216.100:9000"
-        DOCKER_IMAGE = "thanhtha/python-app:${BUILD_NUMBER}"
         DIRECTORY = "python-app/hello_app"
         DIRECTORY_MANIFEST = "python-app/hello_app-manifest"
+        // Docker image tag thêm SHA cú commit để dễ theo dõi
+        DOCKER_IMAGE_TAG = "${BUILD_NUMBER}-${GIT_COMMIT.take(7)}"
+        DOCKER_IMAGE = "thanhtha/python-app:${DOCKER_IMAGE_TAG}"
+        // Git config cho việc push manifest
+        GIT_REPO_NAME = "cicd-repo"
+        GIT_USER_NAME = "tnubeo1111"
+        GIT_USER_EMAIL = "jenkins-admin@gmail.com"
+        GIT_USER_NAME = "jenkins-admin"
+    }
+    options {
+        // Giới hạn thời gian tổng pipeline, tránh treo lâu
+        timeout(time: 60, unit: 'MINUTES')
+        // Tắt kết quả build cũ để tránh lưu quá nhiều
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        // Tăng retry khi có lỗi tạm thời (optionally)
     }
     stages {
         stage('Checkout') {
             steps {
+                echo "Checkout branch dev from repo"
                 git branch: 'dev', url: 'https://github.com/tnubeo1111/cicd-repo.git'
+                script {
+                    // Lấy commit hiện tại làm tag image
+                    env.GIT_COMMIT = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
+                    echo "Checked out commit: ${env.GIT_COMMIT}"
+                }
             }
         }
-        stage('Check File Dockerfile') {
+        stage('Check Dockerfile') {
             steps {
-                sh '''
-                    cd ${DIRECTORY}
-                    if [ ! -f Dockerfile ]; then
-                        echo "File 'Dockerfile' does not exist."
-                        exit 1
-                    fi
-                    head -n 20 Dockerfile # Log 20 dòng đầu
-                '''
+                dir("${DIRECTORY}") {
+                    script {
+                        if (!fileExists('Dockerfile')) {
+                            error "Dockerfile not found in directory ${DIRECTORY}"
+                        }
+                        echo "Dockerfile found, printing first 20 lines:"
+                        sh 'head -20 Dockerfile'
+                    }
+                }
             }
         }
         stage('Create SonarQube Project') {
             steps {
                 withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
-                    sh '''
-                        curl -u $SONAR_AUTH_TOKEN: \
-                        -X POST \
-                        -d "name=$SONAR_PROJECT_NAME" \
-                        -d "project=$SONAR_PROJECT_KEY" \
-                        $SONAR_URL/api/projects/create || true
-                    '''
+                    script {
+                        // Tạo project SonarQube nếu chưa tạo, tránh lỗi bằng || true
+                        sh """
+                            curl -s -u $SONAR_AUTH_TOKEN: \
+                            -X POST \
+                            -d name=${SONAR_PROJECT_NAME} \
+                            -d project=${SONAR_PROJECT_KEY} \
+                            ${SONAR_URL}/api/projects/create || true
+                        """
+                        echo "SonarQube project creation API called (if exists, ignored)"
+                    }
                 }
             }
         }
         stage('Static Code Analysis') {
             steps {
                 withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
-                    // Cần thêm withSonarQubeEnv với tên server đã cấu hình trong Jenkins
+                    // Quan trọng: dùng withSonarQubeEnv tên server đã cấu hình Jenkins để plugin theo dõi task
                     withSonarQubeEnv('SonarQubeServerName') {
-                        sh '''
-                            cd ${DIRECTORY}
-                            sonar-scanner \
-                                -Dsonar.login=$SONAR_AUTH_TOKEN \
-                                -Dsonar.host.url=${SONAR_URL} \
-                                -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                                -Dsonar.projectName=${SONAR_PROJECT_NAME} \
-                                -Dsonar.sources=.
-                        '''
+                        dir("${DIRECTORY}") {
+                            sh """
+                                sonar-scanner \
+                                    -Dsonar.login=$SONAR_AUTH_TOKEN \
+                                    -Dsonar.host.url=${SONAR_URL} \
+                                    -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                                    -Dsonar.projectName=${SONAR_PROJECT_NAME} \
+                                    -Dsonar.sources=.
+                            """
+                        }
                     }
                 }
             }
         }
         stage('Quality Gate') {
             steps {
-                // Đặt timeout tránh chờ quá lâu
+                // Đợi tối đa 5 phút, abort pipeline khi fail Quality Gate
                 timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
             }
         }
-        stage('Build images') {
+        stage('Build Docker Image') {
             environment {
                 REGISTRY_CREDENTIALS = credentials('docker-thanhtha')
             }
             steps {
                 script {
-                    sh "cd ${DIRECTORY} && docker build --pull -t ${DOCKER_IMAGE} ."
-                    def dockerImage = docker.image("${DOCKER_IMAGE}")
+                    dir("${DIRECTORY}") {
+                        // Lấy base image mới nhất để tránh lỗi bảo mật
+                        sh "docker build --pull -t ${DOCKER_IMAGE} ."
+                    }
+                    def img = docker.image("${DOCKER_IMAGE}")
                     docker.withRegistry('https://index.docker.io/v1/', 'docker-thanhtha') {
-                        dockerImage.push()
+                        img.push()
+                        // Nên push thêm tag latest hoặc branch nếu cần, ví dụ:
+                        // img.push('latest')
+                    }
+                    echo "Docker image pushed: ${DOCKER_IMAGE}"
+                }
+            }
+        }
+        stage('Cleanup Deployment Artifacts') {
+            steps {
+                script {
+                    def tmpFile = "${DIRECTORY_MANIFEST}/tmp-deployment.yaml"
+                    if (fileExists(tmpFile)) {
+                        sh "rm -f ${tmpFile}"
+                        echo "Deleted old tmp deployment file."
+                    } else {
+                        echo "No tmp deployment file present."
                     }
                 }
             }
         }
-        stage('Delete old file deployment') {
-            steps {
-                sh '''
-                    if [ -f "${DIRECTORY_MANIFEST}/tmp-deployment.yaml" ]; then
-                        rm -f "${DIRECTORY_MANIFEST}/tmp-deployment.yaml"
-                    fi
-                '''
-            }
-        }
-        stage('Update Deployment File') {
-            environment {
-                GIT_REPO_NAME = "cicd-repo"
-                GIT_USER_NAME = "tnubeo1111"
-            }
+        stage('Update Deployment Manifest') {
             steps {
                 withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
-                    sh '''
-                        git config --global --add safe.directory '*'
-                        git config user.email "jenkins-admin@gmail.com"
-                        git config user.name "jenkins-admin"
-                        BUILD_NUMBER=${BUILD_NUMBER}
-                        cp ${DIRECTORY_MANIFEST}/deployment.yaml ${DIRECTORY_MANIFEST}/tmp-deployment.yaml
-                        sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" ${DIRECTORY_MANIFEST}/tmp-deployment.yaml
-                        git add ${DIRECTORY_MANIFEST}/*
-                        if ! git diff --cached --quiet; then
-                            git commit -m "Update deployment image to version ${BUILD_NUMBER}"
-                            git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:dev
-                        else
-                            echo "No deployment file changes to commit."
-                        fi
-                    '''
+                    script {
+                        sh """
+                            git config --global --add safe.directory '*'
+                            git config user.email "${GIT_USER_EMAIL}"
+                            git config user.name "${GIT_USER_NAME}"
+                            BUILD_NUMBER=${BUILD_NUMBER}
+                            
+                            cp ${DIRECTORY_MANIFEST}/deployment.yaml ${DIRECTORY_MANIFEST}/tmp-deployment.yaml
+                            sed -i "s/replaceImageTag/${DOCKER_IMAGE_TAG}/g" ${DIRECTORY_MANIFEST}/tmp-deployment.yaml
+                            
+                            cd ${env.WORKSPACE}
+                            git add ${DIRECTORY_MANIFEST}/tmp-deployment.yaml
+                            
+                            if ! git diff --cached --quiet; then
+                                git commit -m "Update deployment image to version ${DOCKER_IMAGE_TAG}"
+                                git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:dev
+                                echo "Deployment manifest updated and pushed."
+                            else
+                                echo "No changes in deployment manifest to commit."
+                            fi
+                        """
+                    }
                 }
             }
         }
     }
     post {
         always {
+            echo "Cleaning workspace..."
             cleanWs()
+        }
+        success {
+            echo "Build completed successfully!"
+        }
+        failure {
+            echo "Build failed!"
+            // Có thể thêm thông báo Slack/Email tùy ý ở đây
         }
     }
 }
