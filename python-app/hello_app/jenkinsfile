@@ -33,6 +33,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo "Checkout branch dev from repo"
+                sh 'git config --global --add safe.directory $WORKSPACE'
                 git branch: 'dev', url: 'https://github.com/tnubeo1111/cicd-repo.git'
                 script {
                     // Lấy commit hiện tại làm tag image
