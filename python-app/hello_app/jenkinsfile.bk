@@ -2,45 +2,47 @@ pipeline {
     agent {
         docker {
             image 'thanhtha/jenkins-agent:full-tools-jdk17-3'
-            args '--user root -v /var/run/docker.sock:/var/run/docker.sock'
+            args '--user root -v /var/run/docker.sock:/var/run/docker.sock' // mount Docker socket to access the host's Docker daemon
         }
     }
     environment {
-        SONAR_PROJECT_KEY = "python-app"
-        SONAR_PROJECT_NAME = "python-app-Project"
-        SONAR_URL = "http://172.25.216.100:9000"
-        DOCKER_IMAGE = "thanhtha/python-app:${BUILD_NUMBER}"
-        DIRECTORY = "python-app/hello_app"
-        DIRECTORY_MANIFEST = "python-app/hello_app-manifest"
+    SONAR_PROJECT_KEY = "python-app"
+    SONAR_PROJECT_NAME = "python-app-Project"
+    SONAR_URL = "http://172.25.216.100:9000"
+    DOCKER_IMAGE = "thanhtha/python-app:${BUILD_NUMBER}"
+    DIRECTORY = "python-app/hello_app"
+    DIRECTORY_MANIFEST = "python-app/hello_app-manifest"
     }
     stages {
-        stage('Checkout') {
+        stage ('Checkout') {
             steps {
                 git branch: 'dev', url: 'https://github.com/tnubeo1111/cicd-repo.git'
             }
         }
-        stage('Check File Dockerfile') {
+        stage ('Check File Dockerfile') {
             steps {
                 sh '''
                     cd ${DIRECTORY}
-                    if [ ! -f Dockerfile ]; then
+                    if [ ! -f "Dockerfile" ]; then
                         echo "File 'Dockerfile' does not exist."
                         exit 1
                     fi
-                    head -n 20 Dockerfile # Log 20 dòng đầu
+                    ls -al
+                    
                 '''
             }
         }
         stage('Create SonarQube Project') {
             steps {
                 withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
-                    sh '''
-                        curl -u $SONAR_AUTH_TOKEN: \
+                    // Tạo dự án mới trên SonarQube thông qua API
+                    sh """
+                        curl -u ${SONAR_AUTH_TOKEN}: \
                         -X POST \
-                        -d "name=$SONAR_PROJECT_NAME" \
-                        -d "project=$SONAR_PROJECT_KEY" \
-                        $SONAR_URL/api/projects/create || true
-                    '''
+                        -d "name=${SONAR_PROJECT_NAME}" \
+                        -d "project=${SONAR_PROJECT_KEY}" \
+                        ${SONAR_URL}/api/projects/create
+                    """
                 }
             }
         }
@@ -59,18 +61,13 @@ pipeline {
                 }
             }
         }
-        stage('Quality Gate') {
-            steps {
-                waitForQualityGate abortPipeline: true
-            }
-        }
-        stage('Build images') {
+        stage ('Build images') {
             environment {
                 REGISTRY_CREDENTIALS = credentials('docker-thanhtha')
             }
             steps {
                 script {
-                    sh 'cd ${DIRECTORY} && docker build --pull -t ${DOCKER_IMAGE} .'
+                    sh 'cd ${DIRECTORY} && docker build -t ${DOCKER_IMAGE} .'
                     def dockerImage = docker.image("${DOCKER_IMAGE}")
                     docker.withRegistry('https://index.docker.io/v1/', "docker-thanhtha") {
                         dockerImage.push()
@@ -80,13 +77,16 @@ pipeline {
         }
         stage('Delete old file deployment') {
             steps {
+                script {
+                // Xóa file tạm thời nếu tồn tại
                 sh '''
-                    if [ -f "${DIRECTORY_MANIFEST}/tmp-deployment.yaml" ]; then
-                        rm -f "${DIRECTORY_MANIFEST}/tmp-deployment.yaml"
+                    if [ -f cd ${DIRECTORY_MANIFEST}/tmp-deployment.yaml ]; then
+                    rm -f ${DIRECTORY_MANIFEST}/tmp-deployment.yaml
                     fi
                 '''
+                }
             }
-        }
+            }
         stage('Update Deployment File') {
             environment {
                 GIT_REPO_NAME = "cicd-repo"
@@ -102,12 +102,8 @@ pipeline {
                         cp ${DIRECTORY_MANIFEST}/deployment.yaml ${DIRECTORY_MANIFEST}/tmp-deployment.yaml
                         sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" ${DIRECTORY_MANIFEST}/tmp-deployment.yaml
                         git add ${DIRECTORY_MANIFEST}/*
-                        if ! git diff --cached --quiet; then
-                            git commit -m "Update deployment image to version ${BUILD_NUMBER}"
-                            git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:dev
-                        else
-                            echo "No deployment file changes to commit."
-                        fi
+                        git commit -m "Update deployment image to version ${BUILD_NUMBER}"
+                        git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:dev
                     '''
                 }
             }
