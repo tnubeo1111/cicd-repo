@@ -9,7 +9,7 @@ spec:
   ports:
   - port: 8000
     targetPort: 8000
-    nodePort: 30082
+    nodePort: 30083
     protocol: TCP
     name: http
   selector:
