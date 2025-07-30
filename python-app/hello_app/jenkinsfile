@@ -14,6 +14,7 @@ pipeline {
         DIRECTORY = "python-app/hello_app"
         DIRECTORY_MANIFEST = "python-app/hello_app-manifest"
         // Docker image tag thêm SHA cú commit để dễ theo dõi
+        DOCKER_HUB = "index.docker.io"
         DOCKER_IMAGE_TAG = "${BUILD_NUMBER}-${GIT_COMMIT.take(7)}"
         DOCKER_IMAGE = "thanhtha/python-app:${DOCKER_IMAGE_TAG}"
         // Git config cho việc push manifest
