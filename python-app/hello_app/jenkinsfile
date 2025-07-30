@@ -197,8 +197,10 @@ pipeline {
                 - Branch: ${env.BRANCH_NAME}
                 - Commit: ${env.GIT_COMMIT}
                 - Started By: ${currentBuild.getBuildCauses()[0].userId}
+                - Docker Image: ${DOCKER_IMAGE}
+                - SonarQube Analysis: ${SONAR_PROJECT_KEY}
 
-                #Jenkins #BuildSuccess
+                #Jenkins #BuildSuccess #Docker #SonarQube
                 """
                 sh """
                     curl -s -X POST https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage \
@@ -217,8 +219,10 @@ pipeline {
                 - Branch: ${env.BRANCH_NAME}
                 - Commit: ${env.GIT_COMMIT}
                 - Started By: ${currentBuild.getBuildCauses()[0].userId}
-                
-                #Jenkins #BuildFailed
+                - Docker Image: ${DOCKER_IMAGE}
+                - SonarQube Analysis: ${SONAR_PROJECT_KEY}
+
+                #Jenkins #BuildFailed #Docker #SonarQube
                 """
                 sh """
                     curl -s -X POST https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage \
@@ -237,8 +241,10 @@ pipeline {
                 - Branch: ${env.BRANCH_NAME}
                 - Commit: ${env.GIT_COMMIT}
                 - Started By: ${currentBuild.getBuildCauses()[0].userId}
-                
-                #Jenkins #BuildAborted
+                - Docker Image: ${DOCKER_IMAGE}
+                - SonarQube Analysis: ${SONAR_PROJECT_KEY}
+
+                #Jenkins #BuildAborted #Docker #SonarQube
                 """
                 sh """
                     curl -s -X POST https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage \
