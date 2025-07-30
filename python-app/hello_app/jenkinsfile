@@ -185,11 +185,32 @@ pipeline {
             cleanWs()
         }
         success {
-            echo "Build completed successfully!"
+        echo "Build completed successfully!"
+        script {
+            // Gửi thông báo thành công tới Telegram
+            def token = credentials('telegram_bot_token')
+            def chatId = "5232048044"
+            def message = "✅ Build #${env.BUILD_NUMBER} SUCCESSFUL for job ${env.JOB_NAME}\n${env.BUILD_URL}"
+            sh """
+                curl -s -X POST https://api.telegram.org/bot${token}/sendMessage \
+                -d chat_id=${chatId} \
+                -d text="${message}"
+            """
         }
+    }
         failure {
-            echo "Build failed!"
-            // Có thể thêm thông báo Slack/Email tùy ý ở đây
+        echo "Build failed!"
+        script {
+            // Gửi thông báo thất bại tới Telegram
+            def token = credentials('telegram_bot_token')
+            def chatId = "5232048044"
+            def message = "❌ Build #${env.BUILD_NUMBER} FAILED for job ${env.JOB_NAME}\n${env.BUILD_URL}"
+            sh """
+                curl -s -X POST https://api.telegram.org/bot${token}/sendMessage \
+                -d chat_id=${chatId} \
+                -d text="${message}"
+            """
+            }
         }
     }
 }
