@@ -94,7 +94,7 @@ pipeline {
         stage('Quality Gate') {
             steps {
                 // Đợi tối đa 5 phút, abort pipeline khi fail Quality Gate
-                timeout(time: 5, unit: 'MINUTES') {
+                timeout(time: 15, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
             }
