@@ -191,7 +191,7 @@ pipeline {
         success {
             script {
                 def message = """
-                *Build Successful!*
+                *Build Successful! ✅*
                 - Status: SUCCESS
                 - Time: ${currentBuild.durationString}
                 - Branch: ${env.BRANCH_NAME}
@@ -213,7 +213,7 @@ pipeline {
         failure {
             script {
                 def message = """
-                *Build Failed!*
+                *Build Failed! ❌*
                 - Status: FAILURE
                 - Time: ${currentBuild.durationString}
                 - Branch: ${env.BRANCH_NAME}
