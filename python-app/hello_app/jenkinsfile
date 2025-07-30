@@ -22,6 +22,13 @@ pipeline {
         GIT_USER_NAME = "tnubeo1111"
         GIT_USER_EMAIL_CONFIG = "jenkins-admin@gmail.com"
         GIT_USER_NAME_CONFIG = "jenkins-admin"
+        // TELEGRAM bot thông báo build
+        TELEGRAM_TOKEN = credentials('telegram-token') // change this line with your credential id for Telegram bot access token
+        TELEGRAM_CHAT_ID = credentials('telegram-chat-id') // change this line with your credential id for Telegram bot chat id
+        TEXT_PRE_BUILD = "Jenkins is building ${JOB_NAME}"
+        TEXT_SUCCESS_BUILD = "${JOB_NAME} is Success"
+        TEXT_FAILURE_BUILD = "${JOB_NAME} is Failure"
+        TEXT_ABORTED_BUILD = "${JOB_NAME} is Aborted"
     }
     options {
         // Giới hạn thời gian tổng pipeline, tránh treo lâu
@@ -184,30 +191,19 @@ pipeline {
             echo "Cleaning workspace..."
             cleanWs()
         }
-        success {
-            echo "Build completed successfully!"
+        success{
             script {
-                def token = credentials('telegram_bot_token')
-                def chatId = "5232048044"
-                def message = "✅ Build #${env.BUILD_NUMBER} SUCCESSFUL for job ${env.JOB_NAME}\n${env.BUILD_URL}"
-                sh """#!/bin/bash
-                curl -s -X POST "https://api.telegram.org/bot${token}/sendMessage" \\
-                -d chat_id="${chatId}" \\
-                -d text="${message.replace('\"', '\\\"')}"
-                """
+                bat ''' curl -s -X POST https://api.telegram.org/bot"%TELEGRAM_TOKEN%"/sendMessage -d chat_id="%TELEGRAM_CHAT_ID%" -d text="%TEXT_SUCCESS_BUILD%" '''
             }
         }
-        failure {
-            echo "Build failed!"
+        failure{
             script {
-                def token = credentials('telegram_bot_token')
-                def chatId = "5232048044"
-                def message = "❌ Build #${env.BUILD_NUMBER} FAILED for job ${env.JOB_NAME}\n${env.BUILD_URL}"
-                sh """#!/bin/bash
-                curl -s -X POST "https://api.telegram.org/bot${token}/sendMessage" \\
-                -d chat_id="${chatId}" \\
-                -d text="${message.replace('\"', '\\\"')}"
-                """
+                bat ''' curl -s -X POST https://api.telegram.org/bot"%TELEGRAM_TOKEN%"/sendMessage -d chat_id="%TELEGRAM_CHAT_ID%" -d text="%TEXT_FAILURE_BUILD%" '''
+            }
+        }
+        aborted{
+            script {
+                bat ''' curl -s -X POST https://api.telegram.org/bot"%TELEGRAM_TOKEN%"/sendMessage -d chat_id="%TELEGRAM_CHAT_ID%" -d text="%TEXT_ABORTED_BUILD%" '''
             }
         }
     }
