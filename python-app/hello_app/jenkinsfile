@@ -99,6 +99,15 @@ pipeline {
                 }
             }
         }
+        stage('Trivy File Scan') {
+            steps {
+                dir("${env.DIRECTORY_APP}/frontend") {
+                    sh '''
+                        trivy fs . > trivyfs.txt
+                    '''
+                }
+            }
+        }
         stage('Build Docker Image') {
             environment {
                 REGISTRY_CREDENTIALS = credentials('docker-thanhtha')
@@ -117,6 +126,14 @@ pipeline {
                     }
                     echo "Docker image pushed: ${DOCKER_IMAGE}"
                 }
+            }
+        }
+        stage("Trivy Image Scan") {
+            steps {
+                sh '''
+                    trivy image ${DOCKER_HUB}/${DOCKER_IMAGE} > trivyimage.txt
+                    cat trivyimage.txt
+                ''' 
             }
         }
         stage('Cleanup Deployment Artifacts') {
