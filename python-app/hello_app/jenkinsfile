@@ -26,9 +26,6 @@ pipeline {
         TELEGRAM_TOKEN = credentials('telegram-token') // change this line with your credential id for Telegram bot access token
         TELEGRAM_CHAT_ID = credentials('telegram-chat-id') // change this line with your credential id for Telegram bot chat id
         TEXT_PRE_BUILD = "Jenkins is building ${JOB_NAME}"
-        TEXT_SUCCESS_BUILD = "${JOB_NAME} is Success"
-        TEXT_FAILURE_BUILD = "${JOB_NAME} is Failure"
-        TEXT_ABORTED_BUILD = "${JOB_NAME} is Aborted"
     }
     options {
         // Giới hạn thời gian tổng pipeline, tránh treo lâu
@@ -193,29 +190,62 @@ pipeline {
         }
         success {
             script {
-                sh '''
+                def message = """
+                *Build Successful!*
+                - Status: SUCCESS
+                - Time: ${currentBuild.durationString}
+                - Branch: ${env.BRANCH_NAME}
+                - Commit: ${env.GIT_COMMIT}
+                - Started By: ${currentBuild.getBuildCauses()[0].userId}
+
+                #Jenkins #BuildSuccess
+                """
+                sh """
                     curl -s -X POST https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage \
                     -d chat_id=$TELEGRAM_CHAT_ID \
-                    -d text="$TEXT_SUCCESS_BUILD"
-                '''
+                    -d text="$message" \
+                    -d parse_mode="Markdown"
+                """
             }
         }
         failure {
             script {
-                sh '''
+                def message = """
+                *Build Failed!*
+                - Status: FAILURE
+                - Time: ${currentBuild.durationString}
+                - Branch: ${env.BRANCH_NAME}
+                - Commit: ${env.GIT_COMMIT}
+                - Started By: ${currentBuild.getBuildCauses()[0].userId}
+                
+                #Jenkins #BuildFailed
+                """
+                sh """
                     curl -s -X POST https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage \
                     -d chat_id=$TELEGRAM_CHAT_ID \
-                    -d text="$TEXT_FAILURE_BUILD"
-                '''
+                    -d text="$message" \
+                    -d parse_mode="Markdown"
+                """
             }
         }
         aborted {
             script {
-                sh '''
+                def message = """
+                *Build Aborted!*
+                - Status: ABORTED
+                - Time: ${currentBuild.durationString}
+                - Branch: ${env.BRANCH_NAME}
+                - Commit: ${env.GIT_COMMIT}
+                - Started By: ${currentBuild.getBuildCauses()[0].userId}
+                
+                #Jenkins #BuildAborted
+                """
+                sh """
                     curl -s -X POST https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage \
                     -d chat_id=$TELEGRAM_CHAT_ID \
-                    -d text="$TEXT_ABORTED_BUILD"
-                '''
+                    -d text="$message" \
+                    -d parse_mode="Markdown"
+                """
             }
         }
     }
