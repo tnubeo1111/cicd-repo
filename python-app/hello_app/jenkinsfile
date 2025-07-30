@@ -101,7 +101,7 @@ pipeline {
         }
         stage('Trivy File Scan') {
             steps {
-                dir("${env.DIRECTORY_APP}/frontend") {
+                dir("${env.DIRECTORY}") {
                     sh '''
                         trivy fs . > trivyfs.txt
                     '''
