@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: python-app
-        image: thanhtha/python-app:15-54cfb81
+        image: thanhtha/python-app:16-e828ec6
         # Image will be automatically updated by CI/CD pipeline
         imagePullPolicy: Always
         ports:
