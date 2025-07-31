@@ -215,35 +215,39 @@ pipeline {
         failure {
             script {
                 echo "Failure post section triggered..."
-                
-                // Đảm bảo đang ở trong thư mục đúng trước khi chạy lệnh git
-                dir("${WORKSPACE}") {
-                    def user = currentBuild.getBuildCauses().find { it instanceof hudson.model.Cause$UserIdCause }?.getUserId() ?: 'System'
-                    def buildUrl = env.BUILD_URL ?: ''
-                    def commitMessage = sh(script: "git log -1 --pretty=%B", returnStdout: true).trim()
-                    def message = """
-                    *Build Failed! ❌*
-                    - Status: FAILURE
-                    - Time Taken: ${currentBuild.durationString}
-                    - Started At: ${new Date(currentBuild.startTimeInMillis).format("yyyy-MM-dd HH:mm:ss")}
-                    - Branch: ${env.BRANCH_NAME ?: 'N/A'}
-                    - Commit: ${env.GIT_COMMIT ?: 'N/A'}
-                    - Commit Msg: ${commitMessage.replaceAll('[\\n\\r]+',' ')}
-                    - Started By: ${user}
-                    - Docker Image: ${DOCKER_IMAGE ?: 'N/A'}
-                    - SonarQube Project: ${SONAR_PROJECT_KEY ?: 'N/A'}
-                    - [View Build Detail](${buildUrl})
 
-                    #Jenkins #BuildFailed #Docker #SonarQube
-                    """
-                    echo "Sending Telegram notification..."
-                    sh """
-                        curl -X POST https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage \
-                            -d chat_id=$TELEGRAM_CHAT_ID \
-                            -d parse_mode=Markdown \
-                            --data-urlencode text="$message" || echo 'Telegram notification failed' >&2
-                    """
-                }
+                // Lấy log lỗi build từ Jenkins
+                def buildLogs = currentBuild.rawBuild.getLog(100) // Lấy 100 dòng cuối trong log
+
+                // Lấy thông tin người bắt đầu build và build URL
+                def user = currentBuild.getBuildCauses().find { it instanceof hudson.model.Cause$UserIdCause }?.getUserId() ?: 'System'
+                def buildUrl = env.BUILD_URL ?: ''
+
+                def message = """
+                *Build Failed! ❌*
+                - Status: FAILURE
+                - Time Taken: ${currentBuild.durationString}
+                - Started At: ${new Date(currentBuild.startTimeInMillis).format("yyyy-MM-dd HH:mm:ss")}
+                - Branch: ${env.BRANCH_NAME ?: 'N/A'}
+                - Commit: ${env.GIT_COMMIT ?: 'N/A'}
+                - Started By: ${user}
+                - Docker Image: ${DOCKER_IMAGE ?: 'N/A'}
+                - SonarQube Project: ${SONAR_PROJECT_KEY ?: 'N/A'}
+                - [View Build Detail](${buildUrl})
+
+                *Build Logs:*
+                ${buildLogs.join('\n')}
+
+                #Jenkins #BuildFailed #Docker #SonarQube
+                """
+                
+                echo "Sending Telegram notification..."
+                sh """
+                    curl -X POST https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage \
+                        -d chat_id=$TELEGRAM_CHAT_ID \
+                        -d parse_mode=Markdown \
+                        --data-urlencode text="$message" || echo 'Telegram notification failed' >&2
+                """
             }
         }
         aborted {
