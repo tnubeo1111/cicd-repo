@@ -216,12 +216,12 @@ pipeline {
             script {
                 echo "Failure post section triggered..."
 
-                // Lấy log lỗi build từ Jenkins
-                def buildLogs = currentBuild.rawBuild.getLog(100) // Lấy 100 dòng cuối trong log
-
-                // Lấy thông tin người bắt đầu build và build URL
+                // Lấy thông tin người bắt đầu build từ currentBuild.getBuildCauses()
                 def user = currentBuild.getBuildCauses().find { it instanceof hudson.model.Cause$UserIdCause }?.getUserId() ?: 'System'
                 def buildUrl = env.BUILD_URL ?: ''
+                
+                // Lấy log của build
+                def buildLogs = currentBuild.getLog(100)  // Lấy 100 dòng cuối của log
 
                 def message = """
                 *Build Failed! ❌*
@@ -250,6 +250,7 @@ pipeline {
                 """
             }
         }
+
         aborted {
             script {
                 echo "Aborted post section triggered..."
