@@ -26,6 +26,8 @@ pipeline {
         TELEGRAM_TOKEN = credentials('telegram-token') // change this line with your credential id for Telegram bot access token
         TELEGRAM_CHAT_ID = credentials('telegram-chat-id') // change this line with your credential id for Telegram bot chat id
         TEXT_PRE_BUILD = "Jenkins is building ${JOB_NAME}"
+        TEXT_SUCCESS_BUILD = "[#${env.BUILD_NUMBER}] Project: ${JOB_NAME} build Success"
+        TEXT_FAILURE_BUILD = "[#${env.BUILD_NUMBER}] Project: ${JOB_NAME} build Failure"
     }
     options {
         // Giới hạn thời gian tổng pipeline, tránh treo lâu
@@ -199,6 +201,7 @@ pipeline {
                     - Started By: ${currentBuild.getBuildCauses()[0]?.userId ?: 'System'}
                     - Docker Image: ${DOCKER_IMAGE}
                     - SonarQube Analysis: ${SONAR_PROJECT_KEY}
+                    - ${TEXT_SUCCESS_BUILD}
                     - [View Build Log](${env.BUILD_URL})
 
                     #Jenkins #BuildSuccess #Docker #SonarQube
@@ -222,6 +225,7 @@ pipeline {
                 - Commit: ${env.GIT_COMMIT ?: 'N/A'}
                 - Started By: ${currentBuild.getBuildCauses().find { it instanceof hudson.model.Cause$UserIdCause }?.getUserId() ?: 'System'}
                 - SonarQube Project: ${SONAR_PROJECT_KEY ?: 'N/A'}
+                - ${TEXT_FAILURE_BUILD}
                 - [View Build Detail](${env.BUILD_URL})
 
                 #Jenkins #BuildFailed #Docker #SonarQube
