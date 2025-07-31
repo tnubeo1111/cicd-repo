@@ -220,10 +220,10 @@ pipeline {
                 def user = currentBuild.getBuildCauses().find { it instanceof hudson.model.Cause$UserIdCause }?.getUserId() ?: 'System'
                 def buildUrl = env.BUILD_URL ?: ''
 
-                // Lấy log từ build thất bại (100 dòng cuối)
-                def buildLogs = currentBuild.rawBuild.getLog(100) // Lấy 100 dòng cuối từ logs
+                // Lấy log của build và lọc các dòng có chứa từ "Error" (hoặc từ khóa khác)
+                def buildLogs = currentBuild.getLog()  // Lấy toàn bộ logs của build
 
-                // Lọc các dòng log có chứa từ "Error" (hoặc từ khóa khác nếu cần)
+                // Lọc các dòng log có chứa từ "Error"
                 def errorLogs = buildLogs.findAll { it.contains('Error') }
 
                 // Nếu không có lỗi, sử dụng thông báo mặc định
