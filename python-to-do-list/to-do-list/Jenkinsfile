@@ -110,8 +110,75 @@ pipeline {
         }
     }
     post {
-      always {
-        cleanWs()
-      }
+        always {
+            echo "Cleaning workspace..."
+            cleanWs()
+        }
+        success {
+            script {
+                def message = """
+                *Build Successful! ✅*
+                - Status: SUCCESS
+                - Time: ${currentBuild.durationString}
+                - Branch: ${env.BRANCH_NAME}
+                - Commit: ${env.GIT_COMMIT}
+                - Started By: ${currentBuild.getBuildCauses()[0].userId}
+                - Docker Image: ${DOCKER_IMAGE}
+                - SonarQube Analysis: ${SONAR_PROJECT_KEY}
+
+                #Jenkins #BuildSuccess #Docker #SonarQube
+                """
+                sh """
+                    curl -s -X POST https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage \
+                    -d chat_id=$TELEGRAM_CHAT_ID \
+                    -d text="$message" \
+                    -d parse_mode="Markdown"
+                """
+            }
+        }
+        failure {
+            script {
+                def message = """
+                *Build Failed! ❌*
+                - Status: FAILURE
+                - Time: ${currentBuild.durationString}
+                - Branch: ${env.BRANCH_NAME}
+                - Commit: ${env.GIT_COMMIT}
+                - Started By: ${currentBuild.getBuildCauses()[0].userId}
+                - Docker Image: ${DOCKER_IMAGE}
+                - SonarQube Analysis: ${SONAR_PROJECT_KEY}
+
+                #Jenkins #BuildFailed #Docker #SonarQube
+                """
+                sh """
+                    curl -s -X POST https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage \
+                    -d chat_id=$TELEGRAM_CHAT_ID \
+                    -d text="$message" \
+                    -d parse_mode="Markdown"
+                """
+            }
+        }
+        aborted {
+            script {
+                def message = """
+                *Build Aborted!*
+                - Status: ABORTED
+                - Time: ${currentBuild.durationString}
+                - Branch: ${env.BRANCH_NAME}
+                - Commit: ${env.GIT_COMMIT}
+                - Started By: ${currentBuild.getBuildCauses()[0].userId}
+                - Docker Image: ${DOCKER_IMAGE}
+                - SonarQube Analysis: ${SONAR_PROJECT_KEY}
+
+                #Jenkins #BuildAborted #Docker #SonarQube
+                """
+                sh """
+                    curl -s -X POST https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage \
+                    -d chat_id=$TELEGRAM_CHAT_ID \
+                    -d text="$message" \
+                    -d parse_mode="Markdown"
+                """
+            }
+        }
     }
 }
