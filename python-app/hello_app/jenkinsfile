@@ -207,51 +207,55 @@ pipeline {
         }
         failure {
             script {
+                echo "Failure post section triggered..."
                 def user = currentBuild.rawBuild.getCause(hudson.model.Cause$UserIdCause)?.getUserId() ?: 'System'
                 def buildUrl = env.BUILD_URL ?: ''
                 def commitMessage = sh(script: "git log -1 --pretty=%B", returnStdout: true).trim()
                 def message = """
-                        *Build Failed! ❌*
-                        - Status: FAILURE
-                        - Time Taken: ${currentBuild.durationString}
-                        - Started At: ${new Date(currentBuild.startTimeInMillis).format("yyyy-MM-dd HH:mm:ss")}
-                        - Branch: ${env.BRANCH_NAME ?: 'N/A'}
-                        - Commit: ${env.GIT_COMMIT ?: 'N/A'}
-                        - Commit Msg: ${commitMessage.replaceAll('[\\n\\r]+',' ')}
-                        - Started By: ${user}
-                        - Docker Image: ${DOCKER_IMAGE ?: 'N/A'}
-                        - SonarQube Project: ${SONAR_PROJECT_KEY ?: 'N/A'}
-                        - [View Build Detail](${buildUrl})
-
-                        #Jenkins #BuildFailed #Docker #SonarQube
-                        """
-                                sh """
-                                    curl -s -X POST https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage \
-                                    -d chat_id=$TELEGRAM_CHAT_ID \
-                                    -d parse_mode=Markdown \
-                                    --data-urlencode text="$message"
-                                """
+                *Build Failed! ❌*
+                - Status: FAILURE
+                - Time Taken: ${currentBuild.durationString}
+                - Started At: ${new Date(currentBuild.startTimeInMillis).format("yyyy-MM-dd HH:mm:ss")}
+                - Branch: ${env.BRANCH_NAME ?: 'N/A'}
+                - Commit: ${env.GIT_COMMIT ?: 'N/A'}
+                - Commit Msg: ${commitMessage.replaceAll('[\\n\\r]+',' ')}
+                - Started By: ${user}
+                - Docker Image: ${DOCKER_IMAGE ?: 'N/A'}
+                - SonarQube Project: ${SONAR_PROJECT_KEY ?: 'N/A'}
+                - [View Build Detail](${buildUrl})
+                #Jenkins #BuildFailed #Docker #SonarQube
+                """
+                echo "Sending Telegram notification..."
+                sh """
+                curl -X POST https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage \
+                    -d chat_id=$TELEGRAM_CHAT_ID \
+                    -d parse_mode=Markdown \
+                    --data-urlencode text="$message" || echo 'Telegram notification failed' >&2
+                """
             }
         }
         aborted {
             script {
+                echo "Aborted post section triggered..."
+                def user = currentBuild.rawBuild.getCause(hudson.model.Cause$UserIdCause)?.getUserId() ?: 'System'
+                def buildUrl = env.BUILD_URL ?: ''
                 def message = """
-                *Build Aborted!*
+                *Build Aborted! ⚠️*
                 - Status: ABORTED
-                - Time: ${currentBuild.durationString}
-                - Branch: ${env.BRANCH_NAME}
-                - Commit: ${env.GIT_COMMIT}
-                - Started By: ${currentBuild.getBuildCauses()[0].userId}
-                - Docker Image: ${DOCKER_IMAGE}
-                - SonarQube Analysis: ${SONAR_PROJECT_KEY}
-
+                - Time Taken: ${currentBuild.durationString}
+                - Branch: ${env.BRANCH_NAME ?: 'N/A'}
+                - Commit: ${env.GIT_COMMIT ?: 'N/A'}
+                - Started By: ${user}
+                - Docker Image: ${DOCKER_IMAGE ?: 'N/A'}
+                - SonarQube Project: ${SONAR_PROJECT_KEY ?: 'N/A'}
+                - [View Build Detail](${buildUrl})
                 #Jenkins #BuildAborted #Docker #SonarQube
                 """
                 sh """
-                    curl -s -X POST https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage \
+                curl -X POST https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage \
                     -d chat_id=$TELEGRAM_CHAT_ID \
-                    -d text="$message" \
-                    -d parse_mode="Markdown"
+                    -d parse_mode=Markdown \
+                    --data-urlencode text="$message" || echo 'Telegram notification failed' >&2
                 """
             }
         }
