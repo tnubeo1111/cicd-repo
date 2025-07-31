@@ -220,9 +220,15 @@ pipeline {
                 def user = currentBuild.getBuildCauses().find { it instanceof hudson.model.Cause$UserIdCause }?.getUserId() ?: 'System'
                 def buildUrl = env.BUILD_URL ?: ''
 
-                // Lấy log của build
-                // Cách này sẽ lấy toàn bộ logs của build
-                def buildLogs = currentBuild.getLog()  // Lấy toàn bộ logs
+                // Lấy log từ build thất bại (100 dòng cuối)
+                def buildLogs = currentBuild.rawBuild.getLog(100) // Lấy 100 dòng cuối từ logs
+
+                // Lọc các dòng log có chứa từ "Error" (hoặc từ khóa khác nếu cần)
+                def errorLogs = buildLogs.findAll { it.contains('Error') }
+
+                // Nếu không có lỗi, sử dụng thông báo mặc định
+                def errorMessage = errorLogs.isEmpty() ? 'No specific error logs found.' : errorLogs.join('\n')
+
                 def message = """
                 *Build Failed! ❌*
                 - Status: FAILURE
@@ -235,8 +241,8 @@ pipeline {
                 - SonarQube Project: ${SONAR_PROJECT_KEY ?: 'N/A'}
                 - [View Build Detail](${buildUrl})
 
-                *Build Logs:*
-                ${buildLogs.join('\n')}
+                *Error Logs:*
+                ${errorMessage}
 
                 #Jenkins #BuildFailed #Docker #SonarQube
                 """
