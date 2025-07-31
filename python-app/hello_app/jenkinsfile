@@ -214,35 +214,15 @@ pipeline {
         }
         failure {
             script {
-                echo "Failure post section triggered..."
-
-                // Lấy thông tin người bắt đầu build từ currentBuild.getBuildCauses()
-                def user = currentBuild.getBuildCauses().find { it instanceof hudson.model.Cause$UserIdCause }?.getUserId() ?: 'System'
-                def buildUrl = env.BUILD_URL ?: ''
-
-                // Lấy logs của build nếu không có lỗi nghiêm trọng
-                def buildLogs = currentBuild.getLog(100)  // Lấy 100 dòng cuối của logs build
-
-                // Lọc các dòng log có chứa từ "Error"
-                def errorLogs = buildLogs.findAll { it.contains('Error') }
-
-                // Nếu không có lỗi, sử dụng thông báo mặc định
-                def errorMessage = errorLogs.isEmpty() ? 'No specific error logs found.' : errorLogs.join('\n')
-
                 def message = """
                 *Build Failed! ❌*
                 - Status: FAILURE
                 - Time Taken: ${currentBuild.durationString}
-                - Started At: ${new Date(currentBuild.startTimeInMillis).format("yyyy-MM-dd HH:mm:ss")}
                 - Branch: ${env.BRANCH_NAME ?: 'N/A'}
                 - Commit: ${env.GIT_COMMIT ?: 'N/A'}
-                - Started By: ${user}
-                - Docker Image: ${DOCKER_IMAGE ?: 'N/A'}
+                - Started By: ${currentBuild.getBuildCauses().find { it instanceof hudson.model.Cause$UserIdCause }?.getUserId() ?: 'System'}
                 - SonarQube Project: ${SONAR_PROJECT_KEY ?: 'N/A'}
-                - [View Build Detail](${buildUrl})
-
-                *Error Logs:*
-                ${errorMessage}
+                - [View Build Detail](${env.BUILD_URL})
 
                 #Jenkins #BuildFailed #Docker #SonarQube
                 """
