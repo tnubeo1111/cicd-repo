@@ -191,45 +191,46 @@ pipeline {
         success {
             script {
                 def message = """
-                *Build Successful! ✅*
-                - Status: SUCCESS
-                - Time: ${currentBuild.durationString}
-                - Branch: ${env.BRANCH_NAME}
-                - Commit: ${env.GIT_COMMIT}
-                - Started By: ${currentBuild.getBuildCauses()[0].userId}
-                - Docker Image: ${DOCKER_IMAGE}
-                - SonarQube Analysis: ${SONAR_PROJECT_KEY}
+                    *Build Successful! ✅*
+                    - Status: SUCCESS
+                    - Time: ${currentBuild.durationString}
+                    - Branch: ${env.BRANCH_NAME}
+                    - Commit: ${env.GIT_COMMIT}
+                    - Started By: ${currentBuild.getBuildCauses()[0]?.userId ?: 'System'}
+                    - Docker Image: ${DOCKER_IMAGE}
+                    - SonarQube Analysis: ${SONAR_PROJECT_KEY}
+                    - [View Build Log](${env.BUILD_URL})
 
-                #Jenkins #BuildSuccess #Docker #SonarQube
-                """
-                sh """
-                    curl -s -X POST https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage \
-                    -d chat_id=$TELEGRAM_CHAT_ID \
-                    -d text="$message" \
-                    -d parse_mode="Markdown"
-                """
+                    #Jenkins #BuildSuccess #Docker #SonarQube
+                    """
             }
         }
         failure {
             script {
+                def user = currentBuild.rawBuild.getCause(hudson.model.Cause$UserIdCause)?.getUserId() ?: 'System'
+                def buildUrl = env.BUILD_URL ?: ''
+                def commitMessage = sh(script: "git log -1 --pretty=%B", returnStdout: true).trim()
                 def message = """
-                *Build Failed! ❌*
-                - Status: FAILURE
-                - Time: ${currentBuild.durationString}
-                - Branch: ${env.BRANCH_NAME}
-                - Commit: ${env.GIT_COMMIT}
-                - Started By: ${currentBuild.getBuildCauses()[0].userId}
-                - Docker Image: ${DOCKER_IMAGE}
-                - SonarQube Analysis: ${SONAR_PROJECT_KEY}
+                        *Build Failed! ❌*
+                        - Status: FAILURE
+                        - Time Taken: ${currentBuild.durationString}
+                        - Started At: ${new Date(currentBuild.startTimeInMillis).format("yyyy-MM-dd HH:mm:ss")}
+                        - Branch: ${env.BRANCH_NAME ?: 'N/A'}
+                        - Commit: ${env.GIT_COMMIT ?: 'N/A'}
+                        - Commit Msg: ${commitMessage.replaceAll('[\\n\\r]+',' ')}
+                        - Started By: ${user}
+                        - Docker Image: ${DOCKER_IMAGE ?: 'N/A'}
+                        - SonarQube Project: ${SONAR_PROJECT_KEY ?: 'N/A'}
+                        - [View Build Detail](${buildUrl})
 
-                #Jenkins #BuildFailed #Docker #SonarQube
-                """
-                sh """
-                    curl -s -X POST https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage \
-                    -d chat_id=$TELEGRAM_CHAT_ID \
-                    -d text="$message" \
-                    -d parse_mode="Markdown"
-                """
+                        #Jenkins #BuildFailed #Docker #SonarQube
+                        """
+                                sh """
+                                    curl -s -X POST https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage \
+                                    -d chat_id=$TELEGRAM_CHAT_ID \
+                                    -d parse_mode=Markdown \
+                                    --data-urlencode text="$message"
+                                """
             }
         }
         aborted {
