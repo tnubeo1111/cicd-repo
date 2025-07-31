@@ -5,7 +5,7 @@ metadata:
   labels:
     app: to-do-list
 spec:
-  replicas: 2
+  replicas: 3
   selector:
     matchLabels:
       app: to-do-list
@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: to-do-list
-        image: thanhtha/to-do-list:8
+        image: thanhtha/to-do-list:9
         # Image will be automatically updated by CI/CD pipeline
         imagePullPolicy: Always
         ports:
@@ -28,15 +28,15 @@ spec:
           requests:
             cpu: "0.2"
             memory: "256Mi"
-        # livenessProbe:
-        #   httpGet:
-        #     path: /
-        #     port: 8000
-        #   initialDelaySeconds: 30
-        #   periodSeconds: 10
-        # readinessProbe:
-        #   httpGet:
-        #     path: /
-        #     port: 8000
-        #   initialDelaySeconds: 5
-        #   periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
