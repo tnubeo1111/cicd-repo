@@ -1,0 +1,270 @@
+pipeline {
+    agent {
+        docker {
+            // Image agent build chuẩn có sẵn đầy đủ tools, mount docker socket để build/push image
+            image 'thanhtha/jenkins-agent:full-tools-jdk17-3'
+            args '--user root -v /var/run/docker.sock:/var/run/docker.sock'
+        }
+    }
+    environment {
+        // Biến môi trường project
+        SONAR_PROJECT_KEY = "python-app"
+        SONAR_PROJECT_NAME = "python-app-Project"
+        SONAR_URL = "http://172.25.216.100:9000"
+        DIRECTORY = "python-app/hello_app"
+        DIRECTORY_MANIFEST = "python-app/hello_app-manifest"
+        // Docker image tag thêm SHA cú commit để dễ theo dõi
+        DOCKER_HUB = "index.docker.io"
+        DOCKER_IMAGE_TAG = "${BUILD_NUMBER}-${GIT_COMMIT.take(7)}"
+        DOCKER_IMAGE = "thanhtha/python-app:${DOCKER_IMAGE_TAG}"
+        // Git config cho việc push manifest
+        GIT_REPO_NAME = "cicd-repo"
+        GIT_USER_NAME = "tnubeo1111"
+        GIT_USER_EMAIL_CONFIG = "jenkins-admin@gmail.com"
+        GIT_USER_NAME_CONFIG = "jenkins-admin"
+        // TELEGRAM bot thông báo build
+        TELEGRAM_TOKEN = credentials('telegram-token') // change this line with your credential id for Telegram bot access token
+        TELEGRAM_CHAT_ID = credentials('telegram-chat-id') // change this line with your credential id for Telegram bot chat id
+        TEXT_PRE_BUILD = "Jenkins is building ${JOB_NAME}"
+        TEXT_SUCCESS_BUILD = "[#${env.BUILD_NUMBER}] Project: ${JOB_NAME} build Success"
+        TEXT_FAILURE_BUILD = "[#${env.BUILD_NUMBER}] Project: ${JOB_NAME} build Failure"
+    }
+    options {
+        // Giới hạn thời gian tổng pipeline, tránh treo lâu
+        timeout(time: 60, unit: 'MINUTES')
+        // Tắt kết quả build cũ để tránh lưu quá nhiều
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        // Tăng retry khi có lỗi tạm thời (optionally)
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                echo "Checkout branch dev from repo"
+                sh 'git config --global --add safe.directory $WORKSPACE'
+                git branch: 'dev', url: 'https://github.com/tnubeo1111/cicd-repo.git'
+                script {
+                    // Lấy commit hiện tại làm tag image
+                    env.GIT_COMMIT = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
+                    echo "Checked out commit: ${env.GIT_COMMIT}"
+                }
+            }
+        }
+        stage('Check Dockerfile') {
+            steps {
+                dir("${DIRECTORY}") {
+                    script {
+                        if (!fileExists('Dockerfile')) {
+                            error "Dockerfile not found in directory ${DIRECTORY}"
+                        }
+                        echo "Dockerfile found, printing first 20 lines:"
+                        sh 'head -20 Dockerfile'
+                    }
+                }
+            }
+        }
+        stage('Create SonarQube Project') {
+            steps {
+                withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
+                    script {
+                        // Tạo project SonarQube nếu chưa tạo, tránh lỗi bằng || true
+                        sh """
+                            curl -s -u $SONAR_AUTH_TOKEN: \
+                            -X POST \
+                            -d name=${SONAR_PROJECT_NAME} \
+                            -d project=${SONAR_PROJECT_KEY} \
+                            ${SONAR_URL}/api/projects/create || true
+                        """
+                        echo "SonarQube project creation API called (if exists, ignored)"
+                    }
+                }
+            }
+        }
+        stage('Static Code Analysis') {
+            steps {
+                withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
+                    // Quan trọng: dùng withSonarQubeEnv tên server đã cấu hình Jenkins để plugin theo dõi task
+                    withSonarQubeEnv('SonarQubeServerName') {
+                        dir("${DIRECTORY}") {
+                            sh """
+                                sonar-scanner \
+                                    -Dsonar.login=$SONAR_AUTH_TOKEN \
+                                    -Dsonar.host.url=${SONAR_URL} \
+                                    -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                                    -Dsonar.projectName=${SONAR_PROJECT_NAME} \
+                                    -Dsonar.sources=.
+                            """
+                        }
+                    }
+                }
+            }
+        }
+        stage('Quality Gate') {
+            steps {
+                // Đợi tối đa 5 phút, abort pipeline khi fail Quality Gate
+                timeout(time: 15, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+        stage('Trivy File Scan') {
+            steps {
+                dir("${env.DIRECTORY}") {
+                    sh '''
+                        trivy fs . > trivyfs.txt
+                    '''
+                }
+            }
+        }
+        stage('Build Docker Image') {
+            environment {
+                REGISTRY_CREDENTIALS = credentials('docker-thanhtha')
+            }
+            steps {
+                script {
+                    dir("${DIRECTORY}") {
+                        // Lấy base image mới nhất để tránh lỗi bảo mật
+                        sh "docker build --pull -t ${DOCKER_IMAGE} ."
+                    }
+                    def img = docker.image("${DOCKER_IMAGE}")
+                    docker.withRegistry('https://index.docker.io/v1/', 'docker-thanhtha') {
+                        img.push()
+                        // Nên push thêm tag latest hoặc branch nếu cần, ví dụ:
+                        // img.push('latest')
+                    }
+                    echo "Docker image pushed: ${DOCKER_IMAGE}"
+                }
+            }
+        }
+        stage("Trivy Image Scan") {
+            steps {
+                sh '''
+                    trivy image ${DOCKER_HUB}/${DOCKER_IMAGE} > trivyimage.txt
+                    cat trivyimage.txt
+                ''' 
+            }
+        }
+        stage('Cleanup Deployment Artifacts') {
+            steps {
+                script {
+                    def tmpFile = "${DIRECTORY_MANIFEST}/tmp-deployment.yaml"
+                    if (fileExists(tmpFile)) {
+                        sh "rm -f ${tmpFile}"
+                        echo "Deleted old tmp deployment file."
+                    } else {
+                        echo "No tmp deployment file present."
+                    }
+                }
+            }
+        }
+        stage('Update Deployment Manifest') {
+            steps {
+                withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
+                    script {
+                        sh """
+                            git config --global --add safe.directory '*'
+                            git config user.email "${GIT_USER_EMAIL_CONFIG}"
+                            git config user.name "${GIT_USER_NAME_CONFIG}"
+                            BUILD_NUMBER=${BUILD_NUMBER}
+                            
+                            cp ${DIRECTORY_MANIFEST}/deployment.yaml ${DIRECTORY_MANIFEST}/tmp-deployment.yaml
+                            sed -i "s/replaceImageTag/${DOCKER_IMAGE_TAG}/g" ${DIRECTORY_MANIFEST}/tmp-deployment.yaml
+                            
+                            cd ${env.WORKSPACE}
+                            git add ${DIRECTORY_MANIFEST}/tmp-deployment.yaml
+                            
+                            if ! git diff --cached --quiet; then
+                                git commit -m "Update deployment image to version ${DOCKER_IMAGE_TAG}"
+                                git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:dev
+                                echo "Deployment manifest updated and pushed."
+                            else
+                                echo "No changes in deployment manifest to commit."
+                            fi
+                        """
+                    }
+                }
+            }
+        }
+    }
+    post {
+        always {
+            echo "Cleaning workspace..."
+            cleanWs()
+        }
+        success {
+            script {
+                def message = """
+                    *Build Successful! ✅*
+                    - Status: SUCCESS
+                    - Time: ${currentBuild.durationString}
+                    - Branch: ${env.BRANCH_NAME}
+                    - Commit: ${env.GIT_COMMIT}
+                    - Started By: ${currentBuild.getBuildCauses()[0]?.userId ?: 'System'}
+                    - Docker Image: ${DOCKER_IMAGE}
+                    - SonarQube Analysis: ${SONAR_PROJECT_KEY}
+                    - ${TEXT_SUCCESS_BUILD}
+                    - [View Build Log](${env.BUILD_URL})
+
+                    #Jenkins #BuildSuccess #Docker #SonarQube
+                """
+                echo "Sending Telegram notification..."
+                sh """
+                    curl -X POST https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage \
+                        -d chat_id=$TELEGRAM_CHAT_ID \
+                        -d parse_mode=Markdown \
+                        --data-urlencode text="$message" || echo 'Telegram notification failed' >&2
+                """
+            }
+        }
+        failure {
+            script {
+                def message = """
+                *Build Failed! ❌*
+                - Status: FAILURE
+                - Time Taken: ${currentBuild.durationString}
+                - Branch: ${env.BRANCH_NAME ?: 'N/A'}
+                - Commit: ${env.GIT_COMMIT ?: 'N/A'}
+                - Started By: ${currentBuild.getBuildCauses().find { it instanceof hudson.model.Cause$UserIdCause }?.getUserId() ?: 'System'}
+                - SonarQube Project: ${SONAR_PROJECT_KEY ?: 'N/A'}
+                - ${TEXT_FAILURE_BUILD}
+                - [View Build Detail](${env.BUILD_URL})
+
+                #Jenkins #BuildFailed #Docker #SonarQube
+                """
+                
+                echo "Sending Telegram notification..."
+                sh """
+                    curl -X POST https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage \
+                        -d chat_id=$TELEGRAM_CHAT_ID \
+                        -d parse_mode=Markdown \
+                        --data-urlencode text="$message" || echo 'Telegram notification failed' >&2
+                """
+            }
+        }
+        aborted {
+            script {
+                echo "Aborted post section triggered..."
+                def user = currentBuild.rawBuild.getCause(hudson.model.Cause$UserIdCause)?.getUserId() ?: 'System'
+                def buildUrl = env.BUILD_URL ?: ''
+                def message = """
+                    *Build Aborted! ⚠️*
+                    - Status: ABORTED
+                    - Time Taken: ${currentBuild.durationString}
+                    - Branch: ${env.BRANCH_NAME ?: 'N/A'}
+                    - Commit: ${env.GIT_COMMIT ?: 'N/A'}
+                    - Started By: ${user}
+                    - Docker Image: ${DOCKER_IMAGE ?: 'N/A'}
+                    - SonarQube Project: ${SONAR_PROJECT_KEY ?: 'N/A'}
+                    - [View Build Detail](${buildUrl})
+
+                    #Jenkins #BuildAborted #Docker #SonarQube
+                """
+                sh """
+                    curl -X POST https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage \
+                        -d chat_id=$TELEGRAM_CHAT_ID \
+                        -d parse_mode=Markdown \
+                        --data-urlencode text="$message" || echo 'Telegram notification failed' >&2
+                """
+            }
+        }
+    }
+}

@@ -1,22 +1,22 @@
 pipeline {
     agent {
         docker {
-            image 'thanhtha/jenkins-agent:java-v17-mvn-npm-2'
+            image 'thanhtha/jenkins-agent:full-tools-jdk17-3'
             args '--user root -v /var/run/docker.sock:/var/run/docker.sock' // mount Docker socket to access the host's Docker daemon
         }
     }
     environment {
-    SONAR_PROJECT_KEY = "to-do-list"
-    SONAR_PROJECT_NAME = "to-do-list-Project"
+    SONAR_PROJECT_KEY = "python-app"
+    SONAR_PROJECT_NAME = "python-app-Project"
     SONAR_URL = "http://172.25.216.100:9000"
-    DOCKER_IMAGE = "thanhtha/to-do-list:${BUILD_NUMBER}"
-    DIRECTORY = "python-to-do-list/to-do-list"
-    DIRECTORY_MANIFEST = "python-to-do-list/to-do-list-manifest"
+    DOCKER_IMAGE = "thanhtha/python-app:${BUILD_NUMBER}"
+    DIRECTORY = "python-app/hello_app"
+    DIRECTORY_MANIFEST = "python-app/hello_app-manifest"
     }
     stages {
         stage ('Checkout') {
             steps {
-                git branch: 'master', url: 'https://github.com/tnubeo1111/cicd-repo.git'
+                git branch: 'dev', url: 'https://github.com/tnubeo1111/cicd-repo.git'
             }
         }
         stage ('Check File Dockerfile') {
@@ -103,82 +103,15 @@ pipeline {
                         sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" ${DIRECTORY_MANIFEST}/tmp-deployment.yaml
                         git add ${DIRECTORY_MANIFEST}/*
                         git commit -m "Update deployment image to version ${BUILD_NUMBER}"
-                        git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:master
+                        git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:dev
                     '''
                 }
             }
         }
     }
     post {
-        always {
-            echo "Cleaning workspace..."
-            cleanWs()
-        }
-        success {
-            script {
-                def message = """
-                *Build Successful! ✅*
-                - Status: SUCCESS
-                - Time: ${currentBuild.durationString}
-                - Branch: ${env.BRANCH_NAME}
-                - Commit: ${env.GIT_COMMIT}
-                - Started By: ${currentBuild.getBuildCauses()[0].userId}
-                - Docker Image: ${DOCKER_IMAGE}
-                - SonarQube Analysis: ${SONAR_PROJECT_KEY}
-
-                #Jenkins #BuildSuccess #Docker #SonarQube
-                """
-                sh """
-                    curl -s -X POST https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage \
-                    -d chat_id=$TELEGRAM_CHAT_ID \
-                    -d text="$message" \
-                    -d parse_mode="Markdown"
-                """
-            }
-        }
-        failure {
-            script {
-                def message = """
-                *Build Failed! ❌*
-                - Status: FAILURE
-                - Time: ${currentBuild.durationString}
-                - Branch: ${env.BRANCH_NAME}
-                - Commit: ${env.GIT_COMMIT}
-                - Started By: ${currentBuild.getBuildCauses()[0].userId}
-                - Docker Image: ${DOCKER_IMAGE}
-                - SonarQube Analysis: ${SONAR_PROJECT_KEY}
-
-                #Jenkins #BuildFailed #Docker #SonarQube
-                """
-                sh """
-                    curl -s -X POST https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage \
-                    -d chat_id=$TELEGRAM_CHAT_ID \
-                    -d text="$message" \
-                    -d parse_mode="Markdown"
-                """
-            }
-        }
-        aborted {
-            script {
-                def message = """
-                *Build Aborted!*
-                - Status: ABORTED
-                - Time: ${currentBuild.durationString}
-                - Branch: ${env.BRANCH_NAME}
-                - Commit: ${env.GIT_COMMIT}
-                - Started By: ${currentBuild.getBuildCauses()[0].userId}
-                - Docker Image: ${DOCKER_IMAGE}
-                - SonarQube Analysis: ${SONAR_PROJECT_KEY}
-
-                #Jenkins #BuildAborted #Docker #SonarQube
-                """
-                sh """
-                    curl -s -X POST https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage \
-                    -d chat_id=$TELEGRAM_CHAT_ID \
-                    -d text="$message" \
-                    -d parse_mode="Markdown"
-                """
-            }
-        }
+      always {
+        cleanWs()
+      }
     }
 }
